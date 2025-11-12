@@ -28,7 +28,7 @@ origins = [
     "http://localhost:5173",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
-    "http://127.0.0.1:8001"
+    "http://127.0.0.1:8001",
 ]
 
 app.add_middleware(
@@ -107,13 +107,31 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 
-# --- Profile Endpoints (Protected) ---
+# --------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# -------------------- Profile Endpoints (Protected) -----------------------
+# --------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+
+
 @app.get("/users/me/", response_model=schemas.Student)
 def read_users_me(current_user: models.Student = Depends(get_current_student_from_token)):
     """
     Get the profile of the currently logged-in user.
     """
     return current_user
+
+
+@app.put("/users/me/", response_model=schemas.Student)
+def update_current_user_profile(
+    student_update: schemas.StudentUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """
+    Update basic profile info for the current user (name, university, etc.).
+    """
+    return crud.update_student(db=db, student_id=current_user.id, student_update=student_update)
 
 
 @app.post("/users/me/skills/", response_model=schemas.Student)
@@ -129,6 +147,41 @@ def add_skill_for_current_user(
     for skill in skills:
         crud.add_skill_to_student(db=db, student_id=current_user.id, skill=skill)
     return crud.get_student(db, student_id=current_user.id)
+
+
+@app.post("/users/me/courses/", response_model=schemas.Course, status_code=status.HTTP_201_CREATED)
+def add_course_for_current_user(
+    course: schemas.CourseCreate,
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """Add a new course to the current user's profile."""
+    return crud.add_course_to_student(db=db, student_id=current_user.id, course=course)
+
+
+@app.post("/users/me/interests/", response_model=schemas.Student)
+def add_interest_for_current_user(
+    interest: schemas.SkillCreate,
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """Add a new area of interest for the current user."""
+    return crud.add_interest_to_student(db=db, student_id=current_user.id, interest=interest)
+
+
+# --- Endpoint for Tracking Internship Interactions ---
+
+@app.post("/users/me/applications/", response_model=schemas.InternshipApplication)
+def track_internship_application(
+    application: schemas.InternshipApplicationCreate,
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """
+    Log or update the status of an internship application for the current user.
+    This is the key to creating the "temporal feedback loop".
+    """
+    return crud.log_or_update_application(db=db, student_id=current_user.id, application=application)
 
 
 # --- READ (all) ---

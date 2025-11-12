@@ -11,4 +11,9 @@ boto3
 pydantic_settings
 PyMuPDF
 python-docx
-pip install httpx
+fastapi
+uvicorn
+psycopg2-binary
+SQLAlchemy
+python-dotenv
+scikit-learn

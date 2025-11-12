@@ -53,4 +53,3 @@ class Skill(Base):
         secondary=student_skills,
         back_populates="skills"
     )
-
