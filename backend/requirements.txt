@@ -1,0 +1,14 @@
+# backend/requirements.txt
+
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+python-jose[cryptography]
+python-multipart
+pydantic[email]
+boto3
+pydantic_settings
+PyMuPDF
+python-docx
+pip install httpx
