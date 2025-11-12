@@ -1,8 +1,25 @@
 # services/user-api/app/schemas.py
 
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+
+
+# --- Skill Schemas ---
+class SkillBase(BaseModel):
+    name: str
+
+
+class SkillCreate(SkillBase):
+    pass
+
+
+class Skill(SkillBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
 
 # --- Student Schemas ---
 
@@ -15,22 +32,42 @@ class StudentBase(BaseModel):
 
 # Properties to receive via API on creation
 class StudentCreate(StudentBase):
-    password: str
+    pass
 
 
 # Properties to receive via API on update
 class StudentUpdate(StudentBase):
-    pass  # For now, allow updating the same fields as base
+    pass
 
 
 # Properties to return to client
 class Student(StudentBase):
     id: int
     created_at: datetime
+    skills: List[Skill] = []
 
-    # This is a Pydantic V2 configuration setting that allows the model
-    # to be created from an ORM object (like our SQLAlchemy Student model).
-    # It tells Pydantic to read the data even if it is not a dict,
-    # but an ORM model.
+    class Config:
+        from_attributes = True
+
+
+# --- Authentication Schemas ---
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+
+class Internship(BaseModel):
+    id: int
+    title: str
+    company: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    url: str
+    created_at: datetime
+
     class Config:
         from_attributes = True

@@ -1,14 +1,13 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from shared.core.database import engine, get_db
 from shared.core import models
-from . import crud, schemas
+from . import crud, schemas, security
 from typing import List
-import sys
-
-# This is a key step to allow importing from the parent directory
-# It adds the project root to Python's path
-sys.path.append('../../../')
+from jose import JWTError
+from datetime import timedelta
 
 # Now you can import from the shared directory
 
@@ -24,15 +23,112 @@ app = FastAPI(
     description="Handles user profiles, authentication, and interactions."
 )
 
+origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8001"
+]
 
-# --- CREATE ---
-@app.post("/students/", response_model=schemas.Student, status_code=201)
-def create_new_student(student: schemas.StudentCreate,
-                       db: Session = Depends(get_db)):
-    db_student = crud.get_student_by_email(db, email=student.email)
-    if db_student:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    return crud.create_student(db=db, student=student)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,       # Specifies the allowed origins
+    allow_credentials=True,      # Allows cookies to be included in requests
+    allow_methods=["*"],         # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],         # Allows all headers
+)
+
+# --- Authentication Setup ---
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+def get_mock_current_student(db: Session = Depends(get_db)) -> models.Student:
+    """
+    Returns a hardcoded student for development purposes.
+    Creates the student if they don't exist in the database.
+    """
+    # These claims simulate what would come from a real Cognito token.
+    # You can change the email to test with different mock users.
+    mock_claims = {
+        "email": "dev-test-user@example.com",
+        "sub": "mock-cognito-sub-12345",  # This is the unique ID from Cognito
+        "given_name": "Dev",
+        "family_name": "User",
+    }
+    user = crud.get_or_create_student(db, mock_claims)
+    if user is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Could not create mock user in the database.",
+        )
+    return user
+
+
+def get_current_student_from_token(
+    claims: dict = Depends(security.get_current_user_claims),
+    db: Session = Depends(get_db)
+) -> models.Student:
+    """
+    Validates token, then gets or creates the user in our database.
+    This is the central dependency for all protected routes.
+    """
+    user = crud.get_or_create_student(db, claims)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not identify user from token claims",
+        )
+    return user
+
+
+# --- Dependency to get current user ---
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        # This is where you would decode the JWT
+        # For simplicity, we are skipping the actual decoding logic here
+        # In a real app, you would use: payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+        # And then get the user from the payload.
+        # This is a placeholder for demonstration purposes.
+        email = "test@example.com" # Placeholder: Replace with actual email from decoded token
+        if email is None:
+            raise credentials_exception
+        token_data = schemas.TokenData(email=email)
+    except JWTError:
+        raise credentials_exception
+    user = crud.get_student_by_email(db, email=token_data.email)
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+# --- Profile Endpoints (Protected) ---
+@app.get("/users/me/", response_model=schemas.Student)
+def read_users_me(current_user: models.Student = Depends(get_current_student_from_token)):
+    """
+    Get the profile of the currently logged-in user.
+    """
+    return current_user
+
+
+@app.post("/users/me/skills/", response_model=schemas.Student)
+def add_skill_for_current_user(
+    skills: List[schemas.SkillCreate],
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """
+    Add a list of skills to the current user's profile.
+    This is the endpoint your resume-parser will call.
+    """
+    for skill in skills:
+        crud.add_skill_to_student(db=db, student_id=current_user.id, skill=skill)
+    return crud.get_student(db, student_id=current_user.id)
 
 
 # --- READ (all) ---
@@ -70,3 +166,18 @@ def delete_existing_student(student_id: int, db: Session = Depends(get_db)):
     if deleted_student is None:
         raise HTTPException(status_code=404, detail="Student not found")
     return deleted_student
+
+
+@app.get("/jobs/", response_model=List[schemas.Internship])
+def read_jobs(
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    """
+    Fetches a list of scraped internships from the database.
+    This endpoint is public and does not require authentication.
+    """
+    internships = crud.get_internships(db, skip=skip, limit=limit)
+    return internships
+

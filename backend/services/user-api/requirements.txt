@@ -2,3 +2,7 @@ sqlalchemy
 psycopg2-binary
 python-dotenv
 fastapi
+passlib[bcrypt]
+python-jose[cryptography]
+requests
+Honcho

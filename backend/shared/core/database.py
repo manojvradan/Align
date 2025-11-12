@@ -9,11 +9,11 @@ load_dotenv()
 
 # --- 1. Read Database Credentials from Environment Variables ---
 # These will be supplied by Docker Compose or your production environment
-DB_USER = os.getenv("DATABASE_USER", "default_user")
-DB_PASSWORD = os.getenv("DATABASE_PASSWORD", "default_password")
+DB_USER = os.getenv("DATABASE_USER", "postgres")
+DB_PASSWORD = os.getenv("DATABASE_PASSWORD", "Aligndb")
 DB_HOST = os.getenv("DATABASE_HOST", "localhost")
 DB_PORT = os.getenv("DATABASE_PORT", "5432")
-DB_NAME = os.getenv("DATABASE_NAME", "default_db")
+DB_NAME = os.getenv("DATABASE_NAME", "postgres")
 
 # --- 2. Construct the Database URL ---
 # The format is: "postgresql://<user>:<password>@<host>:<port>/<dbname>"
