@@ -108,3 +108,63 @@ def get_internships(db: Session, skip: int = 0, limit: int = 20):
     Retrieves a list of internships from the database with pagination.
     """
     return db.query(models.Internship).order_by(models.Internship.created_at.desc()).offset(skip).limit(limit).all()
+
+
+# --- CRUD for Projects ---
+
+def add_project_to_student(db: Session, student_id: int, project: schemas.ProjectCreate):
+    db_project = models.Project(**project.dict(), student_id=student_id)
+    db.add(db_project)
+    db.commit()
+    db.refresh(db_project)
+    return db_project
+
+# --- CRUD for Courses ---
+
+
+def add_course_to_student(db: Session, student_id: int, course: schemas.CourseCreate):
+    db_course = models.Course(**course.dict(), student_id=student_id)
+    db.add(db_course)
+    db.commit()
+    db.refresh(db_course)
+    return db_course
+
+# --- CRUD for Interests ---
+
+
+def add_interest_to_student(db: Session, student_id: int, interest: schemas.SkillCreate):
+    db_student = get_student(db, student_id)
+    if not db_student:
+        return None
+    # We reuse get_or_create_skill because the schema is the same
+    db_interest = get_or_create_skill(db, interest)
+    if db_interest not in db_student.interests:
+        db_student.interests.append(db_interest)
+        db.commit()
+    return db_student
+
+# --- CRUD for Internship Applications ---
+
+
+def log_or_update_application(db: Session, student_id: int, application: schemas.InternshipApplicationCreate):
+    # Check if an application for this internship already exists
+    db_app = db.query(models.InternshipApplication).filter(
+        models.InternshipApplication.student_id == student_id,
+        models.InternshipApplication.internship_id == application.internship_id
+    ).first()
+
+    if db_app:
+        # Update existing application status
+        db_app.status = application.status
+    else:
+        # Create a new application log
+        db_app = models.InternshipApplication(
+            student_id=student_id,
+            internship_id=application.internship_id,
+            status=application.status
+        )
+        db.add(db_app)
+
+    db.commit()
+    db.refresh(db_app)
+    return db_app
