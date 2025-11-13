@@ -14,7 +14,6 @@ const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('AUTHENTICATED BUT ISNT')
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
@@ -24,16 +23,19 @@ const LoginPage: React.FC = () => {
     setError('');
     setIsSubmitting(true);
 
-    if (isAuthenticated) {
-      setIsSubmitting(false);
-      return
-  }
     try {
       await login({ email, password});
     } catch (err: any) {
       if (err && err.name === 'UserAlreadyAuthenticatedException') {
         console.log("User already authenticated, syncing profile...");
-        await fetchUserProfile();
+        const syncSuccess = await fetchUserProfile();
+        if (syncSuccess) {
+          // If the sync is successful, we navigate immediately.
+          // This is the logic that fixes the "stuck" page.
+          navigate('/', { replace: true });
+        } else {
+          setError('Could not sync your profile. Please try again.');
+        }
       } else {
         setError('Failed to login. Please check your credentials.');
         console.error(err);
