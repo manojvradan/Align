@@ -37,7 +37,12 @@ const RegisterPage: React.FC = () => {
       if (err.response && err.response.data && err.response.data.detail) {
           // Capture specific backend errors, like "Email already registered"
           setError(err.response.data.detail);
-      } else {
+      } 
+      else if (err && err.name === "UsernameExistsException")
+        {
+          setError('Email already registered. Try signing in');
+      }
+      else {
           setError('Failed to register. Please try again later.');
       }
       console.error(err);

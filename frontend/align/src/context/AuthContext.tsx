@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = Hub.listen('auth', ({ payload: { event } }) => {
-      if (event === 'signedIn' || event === 'autoSignIn') {
+      if (event === 'signedIn') {
         fetchUserProfile();
       } else if (event === 'signedOut') {
         setUser(null);
@@ -63,24 +63,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       // Replaces Auth.currentAuthenticatedUser()
       await getCurrentUser(); 
+      await fetchUserProfile();
       // If successful, the Hub listener will fire and fetch the profile
     } catch (error) {
-      // No user is signed in
+      // This catch block only runs if getCurrentUser() fails.
+      // This means the user is definitely not logged in.
+      console.log('No Cognito session found.');
       setUser(null);
     } finally {
+      // This block will ALWAYS run after the try/catch
+      console.log('Finished auth check, setting isLoading to false.');
       setIsLoading(false);
     }
   };
 
-
+  
   const fetchUserProfile = async () => {
     try {
       // This automatically uses the Cognito JWT from axiosConfig
       const { data } = await apiClient.get<User>('/users/me/');
       setUser(data);
+      return true;
     } catch (error) {
       console.error("Failed to fetch user profile from our backend", error);
       // This might happen if the user is in Cognito but not yet in our DB
+      setUser(null);
+      return false;
     }
   };
 
