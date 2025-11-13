@@ -3,8 +3,6 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 import uuid
 from . import s3_utils, parser, schemas
 from fastapi.middleware.cors import CORSMiddleware
-import httpx
-from typing import Annotated
 
 app = FastAPI(title="Resume Parser Service")
 
@@ -53,7 +51,7 @@ async def upload_and_parse_resume(
     s3_url = s3_utils.upload_file_to_s3(file_obj=io.BytesIO(file_content), object_name=unique_filename)
     if not s3_url:
         raise HTTPException(status_code=500, detail="Could not upload file to S3.")
- 
+
     # 5. Extract text based on file type
     text = ""
 
