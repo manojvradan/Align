@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from shared.core.database import engine, get_db
@@ -7,7 +7,6 @@ from shared.core import models
 from . import crud, schemas, security
 from typing import List
 from jose import JWTError
-from datetime import timedelta
 
 # Now you can import from the shared directory
 
@@ -233,4 +232,3 @@ def read_jobs(
     """
     internships = crud.get_internships(db, skip=skip, limit=limit)
     return internships
-
