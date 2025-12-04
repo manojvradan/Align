@@ -35,7 +35,7 @@ def upload_file_to_s3(file_obj, object_name: str) -> str | None:
             f"Successfully uploaded {object_name} to bucket {bucket_name}.")
 
         # Construct the public URL
-        # Note: This URL format assumes your bucket is public or 
+        # Note: This URL format assumes your bucket is public or
         # you've configured public access.
         # For private buckets, you would generate a pre-signed URL instead.
         url = f"https://{bucket_name}.s3.{

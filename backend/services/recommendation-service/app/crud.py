@@ -7,7 +7,9 @@ def get_student_profile(db: Session, student_id: int) -> models.Student | None:
     Fetches a student and all their related growth data in a single,
     efficient query.
     """
-    return db.query(models.Student).filter(models.Student.id == student_id).options(
+    return db.query(models.Student).filter(
+        models.Student.id == student_id
+        ).options(
         joinedload(models.Student.skills),
         joinedload(models.Student.interests),
         joinedload(models.Student.projects),

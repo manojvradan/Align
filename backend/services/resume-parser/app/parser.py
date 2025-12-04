@@ -5,10 +5,12 @@ import io
 # A comprehensive list of skills. You should expand this list significantly.
 # You can also load this from a separate JSON or text file.
 SKILLS_LIST = [
-    "python", "java", "c++", "javascript", "react", "angular", "vue", "node.js", 
+    "python", "java", "c++", "javascript", "react", "angular", "vue",
+    "node.js",
     "typescript", "html", "css", "tailwind css", "sql", "postgresql", "mysql",
     "mongodb", "nosql", "docker", "kubernetes", "aws", "azure", "gcp", "git",
-    "restful apis", "graphql", "fastapi", "django", "flask", "machine learning",
+    "restful apis", "graphql", "fastapi", "django", "flask",
+    "machine learning",
     "deep learning", "tensorflow", "pytorch", "scikit-learn", "data analysis",
     "project management", "agile", "scrum", "leadership", "communication"
 ]

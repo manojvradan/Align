@@ -6,10 +6,19 @@ import os
 import requests
 
 AWS_REGION = os.getenv("VITE_AWS_REGION", "us-east-1")  # CHANGE TO YOUR REGION
-COGNITO_USER_POOL_ID = os.getenv("VITE_COGNITO_USER_POOL_ID", "your-user-pool-id")
-COGNITO_APP_CLIENT_ID = os.getenv("VITE_COGNITO_APP_CLIENT_ID", "your-app-client-id")
+COGNITO_USER_POOL_ID = os.getenv(
+    "VITE_COGNITO_USER_POOL_ID",
+    "your-user-pool-id"
+    )
+COGNITO_APP_CLIENT_ID = os.getenv(
+    "VITE_COGNITO_APP_CLIENT_ID",
+    "your-app-client-id"
+    )
 
-COGNITO_JWKS_URL = f"https://cognito-idp.{AWS_REGION}.amazonaws.com/{COGNITO_USER_POOL_ID}/.well-known/jwks.json"
+COGNITO_JWKS_URL = (
+    f"https://cognito-idp.{AWS_REGION}.amazonaws.com/"
+    f"{COGNITO_USER_POOL_ID}/.well-known/jwks.json"
+)
 
 # --- Cognito JWT Validation ---
 # Cache the keys for performance
@@ -66,7 +75,10 @@ async def get_current_user_claims(token: str = Depends(oauth2_scheme)) -> dict:
             rsa_key,
             algorithms=["RS256"],
             audience=COGNITO_APP_CLIENT_ID,
-            issuer=f"https://cognito-idp.{AWS_REGION}.amazonaws.com/{COGNITO_USER_POOL_ID}",
+            issuer=(
+                f"https://cognito-idp.{AWS_REGION}.amazonaws.com/"
+                f"{COGNITO_USER_POOL_ID}"
+            ),
         )
         return payload
     except JWTError as e:

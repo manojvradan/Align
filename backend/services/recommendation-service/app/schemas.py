@@ -16,7 +16,8 @@ class Internship(BaseModel):
     url: str
     created_at: datetime
 
-    # This config allows Pydantic to read data from ORM objects (like SQLAlchemy models)
+    # This config allows Pydantic to read data from ORM objects
+    # (like SQLAlchemy models)
     class Config:
         from_attributes = True
 

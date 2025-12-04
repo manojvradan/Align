@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
-from pathlib import Path # <--- Import the Path object
+from pathlib import Path  # <--- Import the Path object
+
 
 class Settings(BaseSettings):
     AWS_ACCESS_KEY_ID: str
@@ -9,6 +10,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = Path(__file__).parent / '..' / '.env'
+
 
 # Create a single instance of the settings to be used throughout the app
 settings = Settings()

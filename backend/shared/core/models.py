@@ -51,10 +51,11 @@ class Student(Base):
     major = Column(String, nullable=True)
     graduation_year = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    summary = Column(Text, nullable=True)  # <-- ADD THIS LINE
 
     skills = relationship(
         "Skill",
-        secondary=student_skills, # Use the association table
+        secondary=student_skills,  # Use the association table
         back_populates="students"
     )
     interests = relationship(

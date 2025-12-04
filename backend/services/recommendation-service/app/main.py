@@ -40,14 +40,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AI Internship Recommendation - Recommendation Service",
-    description="Provides internship recommendations based on student profiles.",
-    lifespan=lifespan # Use the new lifespan event handler
+    description="Provides internship recommendations "
+    "based on student profiles.",
+    lifespan=lifespan  # Use the new lifespan event handler
 )
 
 
 # --- Schemas ---
 # Re-define a simple Internship schema here for the response model
-class Internship(schemas.Internship):  # Inherit from your shared schema if possible
+class Internship(schemas.Internship):  # Inherit from your shared schema
     pass
 
 
@@ -56,9 +57,12 @@ class RecommendationResponse(schemas.BaseModel):
 
 
 # --- API Endpoint ---
-@app.get("/recommendations/{student_id}", response_model=RecommendationResponse)
+@app.get(
+        "/recommendations/{student_id}",
+        response_model=RecommendationResponse
+        )
 def get_recommendations_for_student(
-    student_id: int, 
+    student_id: int,
     db: Session = Depends(get_db)
 ):
 
@@ -72,7 +76,12 @@ def get_recommendations_for_student(
 
     try:
         # 2. Get recommendations from our in-memory model
-        recommended_internships = recommender.recommend(student_profile, top_n=10)
+        recommended_internships = recommender.recommend(
+            student_profile, top_n=10
+            )
         return {"recommendations": recommended_internships}
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=f"Service Unavailable: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Service Unavailable: {e}"
+            )

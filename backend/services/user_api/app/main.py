@@ -82,7 +82,10 @@ def get_current_student_from_token(
 
 
 # --- Dependency to get current user ---
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db)
+        ):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -91,10 +94,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     try:
         # This is where you would decode the JWT
         # For simplicity, we are skipping the actual decoding logic here
-        # In a real app, you would use: payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+        # In a real app, you would use: payload = jwt.decode(
+        # token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
         # And then get the user from the payload.
         # This is a placeholder for demonstration purposes.
-        email = "test@example.com" # Placeholder: Replace with actual email from decoded token
+        email = "test@example.com"  # Placeholder
         if email is None:
             raise credentials_exception
         token_data = schemas.TokenData(email=email)
@@ -114,7 +118,9 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 
 @app.get("/users/me/", response_model=schemas.Student)
-def read_users_me(current_user: models.Student = Depends(get_current_student_from_token)):
+def read_users_me(
+        current_user: models.Student = Depends(get_current_student_from_token)
+        ):
     """
     Get the profile of the currently logged-in user.
     """
@@ -130,7 +136,11 @@ def update_current_user_profile(
     """
     Update basic profile info for the current user (name, university, etc.).
     """
-    return crud.update_student(db=db, student_id=current_user.id, student_update=student_update)
+    return crud.update_student(
+        db=db,
+        student_id=current_user.id,
+        student_update=student_update
+        )
 
 
 @app.post("/users/me/skills/", response_model=schemas.Student)
@@ -144,18 +154,30 @@ def add_skill_for_current_user(
     This is the endpoint your resume-parser will call.
     """
     for skill in skills:
-        crud.add_skill_to_student(db=db, student_id=current_user.id, skill=skill)
+        crud.add_skill_to_student(
+            db=db,
+            student_id=current_user.id,
+            skill=skill
+            )
     return crud.get_student(db, student_id=current_user.id)
 
 
-@app.post("/users/me/courses/", response_model=schemas.Course, status_code=status.HTTP_201_CREATED)
+@app.post(
+        "/users/me/courses/",
+        response_model=schemas.Course,
+        status_code=status.HTTP_201_CREATED
+        )
 def add_course_for_current_user(
     course: schemas.CourseCreate,
     db: Session = Depends(get_db),
     current_user: models.Student = Depends(get_current_student_from_token)
 ):
     """Add a new course to the current user's profile."""
-    return crud.add_course_to_student(db=db, student_id=current_user.id, course=course)
+    return crud.add_course_to_student(
+        db=db,
+        student_id=current_user.id,
+        course=course
+        )
 
 
 @app.post("/users/me/interests/", response_model=schemas.Student)
@@ -165,12 +187,19 @@ def add_interest_for_current_user(
     current_user: models.Student = Depends(get_current_student_from_token)
 ):
     """Add a new area of interest for the current user."""
-    return crud.add_interest_to_student(db=db, student_id=current_user.id, interest=interest)
+    return crud.add_interest_to_student(
+        db=db,
+        student_id=current_user.id,
+        interest=interest
+        )
 
 
 # --- Endpoint for Tracking Internship Interactions ---
 
-@app.post("/users/me/applications/", response_model=schemas.InternshipApplication)
+@app.post(
+        "/users/me/applications/",
+        response_model=schemas.InternshipApplication
+        )
 def track_internship_application(
     application: schemas.InternshipApplicationCreate,
     db: Session = Depends(get_db),
@@ -180,7 +209,11 @@ def track_internship_application(
     Log or update the status of an internship application for the current user.
     This is the key to creating the "temporal feedback loop".
     """
-    return crud.log_or_update_application(db=db, student_id=current_user.id, application=application)
+    return crud.log_or_update_application(
+        db=db,
+        student_id=current_user.id,
+        application=application
+        )
 
 
 # --- READ (all) ---
@@ -232,3 +265,22 @@ def read_jobs(
     """
     internships = crud.get_internships(db, skip=skip, limit=limit)
     return internships
+
+
+# --- NEW DEDICATED ENDPOINT FOR LLM ENRICHMENT ---
+@app.post("/users/me/enrich", response_model=schemas.Student)
+def enrich_current_user_profile(
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """
+    Analyzes the current user's profile using an LLM to infer new skills
+    and generate a professional summary.
+    """
+    updated_student = crud.enrich_student_profile(
+        db=db,
+        student_id=current_user.id
+        )
+    if not updated_student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return updated_student

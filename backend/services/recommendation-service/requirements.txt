@@ -3,5 +3,5 @@ uvicorn
 psycopg2-binary
 SQLAlchemy
 python-dotenv
-scikit-learn  # For TF-IDF and Cosine Similarity
+scikit-learn
 sklearn
