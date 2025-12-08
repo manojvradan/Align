@@ -7,9 +7,16 @@ from shared.core import models
 from . import crud, schemas, security
 from typing import List
 from jose import JWTError
+from dotenv import load_dotenv
+import os
 
 # Now you can import from the shared directory
+load_dotenv()
 
+if not os.getenv("OPENAI_API_KEY"):
+    print("CRITICAL WARNING: OPENAI_API_KEY is missing!")
+else:
+    print("OPENAI_API_KEY loaded successfully.")
 
 # This command tells SQLAlchemy to
 # create all the tables defined in your models.
@@ -28,11 +35,12 @@ origins = [
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:8001",
+    "http://127.0.0.1:8002",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,       # Specifies the allowed origins
+    allow_origins=["*"],         # Specifies the allowed origins
     allow_credentials=True,      # Allows cookies to be included in requests
     allow_methods=["*"],         # Allows all methods (GET, POST, etc.)
     allow_headers=["*"],         # Allows all headers
@@ -133,6 +141,8 @@ def update_current_user_profile(
     db: Session = Depends(get_db),
     current_user: models.Student = Depends(get_current_student_from_token)
 ):
+    print("DEBUG - DATA RECEIVED:", student_update.model_dump(exclude_unset=True))
+
     """
     Update basic profile info for the current user (name, university, etc.).
     """
@@ -284,3 +294,61 @@ def enrich_current_user_profile(
     if not updated_student:
         raise HTTPException(status_code=404, detail="Student not found")
     return updated_student
+
+
+@app.get("/users/me/saved-jobs/ids", response_model=List[int])
+def get_my_saved_job_ids(
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """Returns just the IDs of saved jobs (for the frontend to highlight icons)."""
+    return crud.get_saved_job_ids(db, student_id=current_user.id)
+
+
+@app.post("/users/me/saved-jobs/{internship_id}")
+def toggle_saved_job(
+    internship_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """Toggles the saved status of a specific job."""
+    is_saved = crud.toggle_save_job(db, student_id=current_user.id, internship_id=internship_id)
+    return {"status": "saved" if is_saved else "unsaved", "internship_id": internship_id}
+
+
+@app.get("/users/me/applied-jobs/ids", response_model=List[int])
+def get_my_applied_job_ids(
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    return crud.get_applied_job_ids(db, student_id=current_user.id)
+
+
+@app.post("/users/me/applied-jobs/{internship_id}")
+def mark_job_applied(
+    internship_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    crud.mark_job_as_applied(db, student_id=current_user.id, internship_id=internship_id)
+    return {"status": "marked_applied", "internship_id": internship_id}
+
+
+@app.get("/users/me/saved-jobs", response_model=List[schemas.Internship])
+def get_my_saved_jobs_list(
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """Fetches full details of all jobs the user has saved."""
+    return crud.get_saved_jobs(db, student_id=current_user.id)
+
+@app.get("/users/me/applied-jobs", response_model=List[schemas.Internship])
+def get_my_applied_jobs_list(
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """
+    Fetches full details (Title, Company, Desc, etc.) of all jobs 
+    the user has marked as applied.
+    """
+    return crud.get_applied_jobs(db, student_id=current_user.id)

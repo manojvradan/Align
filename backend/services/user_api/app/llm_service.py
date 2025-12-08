@@ -1,3 +1,4 @@
+import json
 import openai
 import os
 from typing import List, Dict, Any
@@ -81,3 +82,52 @@ def generate_profile_enrichment(
     except Exception as e:
         print(f"Error calling OpenAI API: {e}")
         return {"inferred_skills": [], "summary": ""}
+
+
+def generate_keywords_for_role(role: str) -> str:
+    """
+    Asks the LLM to generate a string of technical keywords relevant 
+    to a specific job role to improve search matching.
+    Returns a space-separated string of keywords.
+    """
+    if not openai.api_key:
+        print("WARNING: OPENAI_API_KEY not set. Skipping keyword generation.")
+        return ""
+
+    print(f"🤖 (LLM) Generating search keywords for role: {role}...")
+
+    prompt = f"""
+    Act as an expert technical recruiter. 
+    I am building a search engine. I have a user looking for an internship as a "{role}".
+    
+    List 25 specific technical hard skills, libraries, tools, frameworks, and concepts 
+    that commonly appear in job descriptions for this specific role.
+    
+    Focus on technology (e.g., "React", "Python", "AWS", "Agile", "CI/CD").
+    
+    **Output Format:**
+    Provide a JSON object with a single key "keywords" containing a list of strings.
+
+    Example:
+    {{ "keywords": ["react", "typescript", "redux", "css", "webpack"] }}
+    """
+
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful AI that outputs JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+        content = response.choices[0].message.content
+        data = json.loads(content)
+
+        # Convert list ["a", "b"] -> string "a b"
+        keywords = data.get("keywords", [])
+        return " ".join(keywords)
+
+    except Exception as e:
+        print(f"Error generating keywords: {e}")
+        return ""

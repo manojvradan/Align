@@ -96,6 +96,7 @@ class StudentUpdate(BaseModel):
     university: Optional[str] = None
     major: Optional[str] = None
     graduation_year: Optional[int] = None
+    preferred_job_role: Optional[str] = None
 
 
 # Properties to return to client
@@ -110,6 +111,7 @@ class Student(StudentBase):
     projects: List[Project] = []
     courses: List[Course] = []
     applications: List[InternshipApplication] = []
+    preferred_job_role: Optional[str] = None
 
     class Config:
         from_attributes = True

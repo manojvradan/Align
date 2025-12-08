@@ -50,23 +50,6 @@ def get_or_create_student(db: Session, claims: dict):
     return student
 
 
-def update_student(db: Session, student_id: int,
-                   student_update: schemas.StudentUpdate):
-    db_student = get_student(db, student_id)
-    if not db_student:
-        return None
-
-    # Update model instance with new data
-    update_data = student_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_student, key, value)
-
-    db.add(db_student)
-    db.commit()
-    db.refresh(db_student)
-    return db_student
-
-
 def delete_student(db: Session, student_id: int):
     db_student = get_student(db, student_id)
     if not db_student:
@@ -247,3 +230,115 @@ def log_or_update_application(
     db.commit()
     db.refresh(db_app)
     return db_app
+
+
+def get_saved_job_ids(db: Session, student_id: int) -> list[int]:
+    """Returns a list of IDs of jobs the student has saved."""
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if not student:
+        return []
+    return [job.id for job in student.saved_jobs]
+
+
+def toggle_save_job(db: Session, student_id: int, internship_id: int) -> bool:
+    """
+    Toggles the saved state. 
+    Returns True if saved, False if unsaved.
+    """
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    internship = db.query(models.Internship).filter(models.Internship.id == internship_id).first()
+
+    if not student or not internship:
+        return False
+
+    if internship in student.saved_jobs:
+        student.saved_jobs.remove(internship)
+        db.commit()
+        return False  # Now unsaved
+    else:
+        student.saved_jobs.append(internship)
+        db.commit()
+        return True  # Now saved
+
+
+def get_applied_job_ids(db: Session, student_id: int) -> list[int]:
+    """Returns a list of IDs of jobs the student has applied to."""
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if not student:
+        return []
+    return [job.id for job in student.applied_jobs]
+
+
+def mark_job_as_applied(db: Session, student_id: int, internship_id: int) -> bool:
+    """Marks a job as applied. Returns True if successful."""
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    internship = db.query(models.Internship).filter(models.Internship.id == internship_id).first()
+
+    if not student or not internship:
+        return False
+
+    # Only add if not already in the list
+    if internship not in student.applied_jobs:
+        student.applied_jobs.append(internship)
+        db.commit()
+        return True
+    return True  # Already applied
+
+
+def get_saved_jobs(db: Session, student_id: int) -> list[models.Internship]:
+    """Returns the list of full Internship objects the student has saved."""
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if not student:
+        return []
+    return student.saved_jobs
+
+
+def get_applied_jobs(db: Session, student_id: int) -> list[models.Internship]:
+    """
+    Returns the list of full Internship objects the student has applied to.
+    Used for the Dashboard list and /applied page.
+    """
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if not student:
+        return []
+    # This relies on the 'applied_jobs' relationship defined in models.py
+    return student.applied_jobs
+
+
+def update_student(db: Session, student_id: int, student_update: schemas.StudentUpdate) -> models.Student:
+    db_student = get_student(db, student_id)
+    if not db_student:
+        return None
+
+    # 1. Check if the Job Role is changing
+    old_role = db_student.preferred_job_role
+    new_role = student_update.preferred_job_role
+    
+    role_has_changed = (new_role is not None and new_role != old_role)
+    
+    # 2. Update the standard fields
+    update_data = student_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_student, key, value)
+
+    # 3. TRIGGER LLM: If role changed OR if they have a role but no keywords yet
+    current_role = db_student.preferred_job_role
+    has_no_keywords = not db_student.search_keywords
+
+    if current_role and (role_has_changed or has_no_keywords):
+        print(f"⚡ Triggering LLM enrichment for role: {current_role}")
+        try:
+            # Generate "React Redux CSS..." from "Frontend Developer"
+            keywords = llm_service.generate_keywords_for_role(current_role)
+            if keywords:
+                db_student.search_keywords = keywords
+                print(f"✅ LLM Keywords saved: {keywords}")
+            else:
+                print("⚠️ LLM returned empty keywords.")
+        except Exception as e:
+            print(f"❌ LLM Error: {e}")
+
+    db.add(db_student)
+    db.commit()
+    db.refresh(db_student)
+    return db_student

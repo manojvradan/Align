@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     AWS_REGION: str
 
     class Config:
-        env_file = Path(__file__).parent / '..' / '.env'
+        env_file = Path(__file__).parent / '..' / '.env.local'
 
 
 # Create a single instance of the settings to be used throughout the app

@@ -27,7 +27,21 @@ student_interests = Table(
     Column('skill_id', Integer, ForeignKey('skills.id'), primary_key=True)
 )
 
+saved_internships = Table(
+    'saved_internships',
+    Base.metadata,
+    Column('student_id', Integer, ForeignKey('students.id'), primary_key=True),
+    Column('internship_id', Integer, ForeignKey('internships.id'), primary_key=True),
+    Column('saved_at', DateTime(timezone=True), server_default=func.now())
+)
 
+applied_internships = Table(
+    'applied_internships',
+    Base.metadata,
+    Column('student_id', Integer, ForeignKey('students.id'), primary_key=True),
+    Column('internship_id', Integer, ForeignKey('internships.id'), primary_key=True),
+    Column('applied_at', DateTime(timezone=True), server_default=func.now())
+)
 # --- Enums for Tracking ---
 
 
@@ -51,7 +65,9 @@ class Student(Base):
     major = Column(String, nullable=True)
     graduation_year = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    summary = Column(Text, nullable=True)  # <-- ADD THIS LINE
+    summary = Column(Text, nullable=True)
+    preferred_job_role = Column(String, nullable=True)
+    search_keywords = Column(Text, nullable=True)
 
     skills = relationship(
         "Skill",
@@ -59,8 +75,18 @@ class Student(Base):
         back_populates="students"
     )
     interests = relationship(
-        "Skill", # Reusing Skill table for interests
+        "Skill",  # Reusing Skill table for interests
         secondary=student_interests
+    )
+    saved_jobs = relationship(
+        "Internship",
+        secondary=saved_internships,
+        backref="saved_by_students"
+    )
+    applied_jobs = relationship(
+        "Internship",
+        secondary=applied_internships,
+        backref="applied_by_students"
     )
     projects = relationship("Project", back_populates="student", cascade="all, delete-orphan")
     courses = relationship("Course", back_populates="student", cascade="all, delete-orphan")
@@ -76,6 +102,7 @@ class Internship(Base):
     company = Column(String, index=True)
     description = Column(Text)
     url = Column(String, unique=True)  # The source URL of the job posting
+    source = Column(String)  # e.g., 'LinkedIn', 'Seek', etc.
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

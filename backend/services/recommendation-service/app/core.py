@@ -1,3 +1,5 @@
+# services/recommendation-service/app/core.py
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from shared.core import models
@@ -19,27 +21,30 @@ class TFIDFRecommender:
         """
         text_parts = []
 
-        # High weight for skills and interests
+        # 1. PREFERRED JOB ROLE (Weight: 5x)
+        if student.preferred_job_role:
+            text_parts.append((student.preferred_job_role + ' ') * 5)
+
+        # 2. LLM GENERATED KEYWORDS (Weight: 8x)
+        # This is the most powerful part. It bridges the gap between
+        # "Frontend" and "React/Redux/CSS".
+        # keywords = getattr(student, "search_keywords", None)
+        # if keywords:
+        #     text_parts.append((keywords + ' ') * 8)
+
+        # 3. EXISTING SKILLS (Weight: 4x)
         skills = ' '.join([s.name for s in student.skills])
-        interests = ' '.join([i.name for i in student.interests])
-        text_parts.append((skills + ' ') * 5)
-        text_parts.append((interests + ' ') * 5)
+        text_parts.append((skills + ' ') * 4)
 
-        # Add the AI-generated summary with a high weight.
-        # This injects the LLM's understanding directly into the model.
+        # 4. SUMMARY & PROJECTS
         if student.summary:
-            text_parts.append((student.summary + ' ') * 5)
+            text_parts.append((student.summary + ' ') * 2)
 
-        # Medium weight for project titles and technologies
         for project in student.projects:
-            text_parts.append((project.title + ' ') * 3)
+            text_parts.append((project.title + ' ') * 2)
             if project.technologies_used:
-                text_parts.append((project.technologies_used + ' ') * 3)
+                text_parts.append((project.technologies_used + ' ') * 2)
             text_parts.append(project.description)
-
-        # Low weight for course names
-        for course in student.courses:
-            text_parts.append(course.name)
 
         return ' '.join(text_parts)
 
@@ -57,14 +62,17 @@ class TFIDFRecommender:
     def fit(self, internships: list[models.Internship]):
         """
         Fits the TF-IDF vectorizer on the entire corpus of internships.
-        This should be done once at startup or periodically.
         """
         self.internships = internships
         internship_docs = [
             self._compile_internship_document(i) for i in internships
             ]
-        self.internship_matrix = self.vectorizer.fit_transform(internship_docs)
-        print("TF-IDF model fitted on internships.")
+        # Ensure we have data to fit
+        if internship_docs:
+            self.internship_matrix = self.vectorizer.fit_transform(internship_docs)
+            print(f"TF-IDF model fitted on {len(internships)} internships.")
+        else:
+            print("Warning: No internships found to train model.")
 
     def recommend(
             self, student: models.Student,
@@ -84,26 +92,51 @@ class TFIDFRecommender:
         # 2. Transform the student doc into a TF-IDF vector
         student_vector = self.vectorizer.transform([student_doc])
 
-        # 3. Compute cosine similarity between the student and all internships
+        # 3. Compute cosine similarity
         cosine_similarities = cosine_similarity(
             student_vector,
             self.internship_matrix
             ).flatten()
 
-        # 4. Get the indices of the top N most similar internships
-        # We use argpartition for efficiency, it's faster than a full sort
-        related_docs_indices = np.argpartition(
-            cosine_similarities, -top_n
-            )[-top_n:]
+        # -------------------------------------------------------------
+        # 4. APPLY BOOSTING LOGIC
+        # -------------------------------------------------------------
+        # If the internship title explicitly matches words in the preferred role,
+        # we manually multiply the similarity score.
+        if student.preferred_job_role:
+            role_keywords = student.preferred_job_role.lower().split()
 
-        # 5. Sort these top N indices by their similarity score
+            # Iterate through all internships to apply specific boosting
+            for idx, internship in enumerate(self.internships):
+                title_lower = internship.title.lower()
+
+                # Check intersection (e.g., if "Software" is in "Software Engineer")
+                if any(word in title_lower for word in role_keywords):
+                    # Multiply score by 1.5 (50% Boost)
+                    cosine_similarities[idx] *= 1.5
+
+        # -------------------------------------------------------------
+
+        # 5. Get the indices of the top N most similar internships
+        # Handle case where top_n > total internships
+        actual_top_n = min(top_n, len(self.internships))
+
+        if actual_top_n == 0:
+            return []
+
+        # Argpartition to get top N unsorted
+        related_docs_indices = np.argpartition(
+            cosine_similarities, -actual_top_n
+            )[-actual_top_n:]
+
+        # 6. Sort these top N indices by their similarity score
         top_indices = sorted(
             related_docs_indices,
             key=lambda i: cosine_similarities[i],
             reverse=True
             )
 
-        # 6. Return the actual internship objects
+        # 7. Return the actual internship objects
         recommended_internships = [self.internships[i] for i in top_indices]
-
+        print("Recommended Internships IDs:", [i.id for i in recommended_internships])
         return recommended_internships
