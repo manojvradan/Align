@@ -22,6 +22,10 @@ interface User {
   full_name: string;
   created_at: string;
   skills: Skill[];
+  university?: string;
+  major?: string;
+  graduation_year?: number;
+  preferred_job_role?: string;
 }
 
 interface AuthContextType {
@@ -33,6 +37,7 @@ interface AuthContextType {
   logout: () => void;
   confirmRegistration: (email: string, code: string) => Promise<void>;
   fetchUserProfile: () => Promise<void>; 
+  updateUser: (updatedData: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -127,9 +132,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await signOut();
     // Hub listener will handle state change
   };
-
+  
+  const updateUser = async (updatedData: Partial<User>) => {
+    if (user) {
+      setUser({ ...user, ...updatedData });
+    }
+  };
   return (
-    <AuthContext.Provider value={{ isAuthenticated: !!user, user, isLoading, login, logout, fetchUserProfile, register, confirmRegistration }}>
+    <AuthContext.Provider value={{ isAuthenticated: !!user, user, isLoading, login, logout, fetchUserProfile, register, confirmRegistration, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

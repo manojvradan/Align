@@ -131,3 +131,62 @@ def generate_keywords_for_role(role: str) -> str:
     except Exception as e:
         print(f"Error generating keywords: {e}")
         return ""
+
+
+def generate_cover_letter(
+        student_name: str,
+        student_summary: str,
+        skills: List[str],
+        job_title: str,
+        company: str,
+        job_description: str
+) -> str:
+    """
+    Uses an LLM to generate a professional cover letter tailored to
+    a specific job posting based on the student's profile.
+    """
+    if not openai.api_key:
+        print("WARNING: OPENAI_API_KEY not set. Cannot generate cover letter.")
+        return ""
+
+    skill_str = ", ".join(skills) if skills else "Not specified"
+
+    prompt = f"""
+    You are an expert career advisor writing a professional cover letter
+    for a university student applying to an internship.
+
+    **Applicant Info:**
+    - Name: {student_name}
+    - Summary: {student_summary or "A motivated university student seeking an internship opportunity."}
+    - Key Skills: {skill_str}
+
+    **Job Details:**
+    - Title: {job_title}
+    - Company: {company}
+    - Description: {job_description or "Not available"}
+
+    **Instructions:**
+    1. Write a concise, professional cover letter (3-4 paragraphs).
+    2. Highlight how the applicant's skills and background align with the role.
+    3. Keep the tone enthusiastic but professional.
+    4. Do NOT fabricate experience the student doesn't have.
+    5. Use a standard cover letter format with greeting and sign-off.
+    6. Address it to "Hiring Manager" if no specific name is given.
+
+    Output ONLY the cover letter text, no extra commentary.
+    """
+
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system",
+                 "content": "You are a professional cover letter writer."},
+                {"role": "user", "content": prompt}
+            ],
+        )
+        return response.choices[0].message.content.strip()
+
+    except Exception as e:
+        print(f"Error generating cover letter: {e}")
+        return ""

@@ -1,20 +1,30 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { FiSearch, FiBell } from 'react-icons/fi';
+import Icon from './Icon';
+import { useAuth } from '../context/AuthContext';
 
 const Header: React.FC = () => {
+  const { user } = useAuth(); 
+  const firstName = user?.full_name?.split(' ')[0];
+
   return (
-    <header className="bg-white shadow-sm p-4 flex justify-between items-center w-full">
-      <nav className="flex space-x-8">
-        <Link to="/" className="text-purple-600 font-semibold">Dashboard</Link>
-        <Link to="/jobs" className="text-gray-600 hover:text-purple-600">Jobs</Link>
-        <Link to="/messages" className="text-gray-600 hover:text-purple-600">Messages</Link>
-        <Link to="/calendar" className="text-gray-600 hover:text-purple-600">Calendar</Link>
-        <Link to="/resume-builder" className="text-gray-600 hover:text-purple-600">Resume Builder</Link>
-      </nav>
-      <div className="flex items-center">
-        <span className="text-gray-500 mr-4">Mon 29th Jul 2024</span>
-        <div className="w-10 h-10 rounded-full flex items-center justify-center">
-          <img src="https://i.pravatar.cc/40?img=1" alt="User" className="rounded-full" />
+    <header className="bg-white/80 backdrop-blur-sm shadow-sm p-4 flex justify-between items-center w-full border-b border-slate-200">
+      {/* Search Bar */}
+      <div className="relative">
+      </div>
+
+      {/* User Actions */}
+      <div className="flex items-center gap-6">
+        <button className="relative text-slate-500 hover:text-slate-800">
+          <Icon as={FiBell} className="text-xl" />
+          <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+        </button>
+        <div className="flex items-center gap-3">
+            <img src="https://i.pravatar.cc/40?img=1" alt="User" className="w-10 h-10 rounded-full border-2 border-slate-200" />
+            <div>
+                <div className="font-semibold text-slate-800 text-sm">{firstName || '...'}</div>
+                <div className="text-xs text-slate-500">Student</div>
+            </div>
         </div>
       </div>
     </header>

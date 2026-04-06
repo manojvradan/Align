@@ -28,13 +28,13 @@ class TFIDFRecommender:
         # 2. LLM GENERATED KEYWORDS (Weight: 8x)
         # This is the most powerful part. It bridges the gap between
         # "Frontend" and "React/Redux/CSS".
-        # keywords = getattr(student, "search_keywords", None)
-        # if keywords:
-        #     text_parts.append((keywords + ' ') * 8)
+        keywords = getattr(student, "search_keywords", None)
+        if keywords:
+            text_parts.append((keywords + ' ') * 8)
 
         # 3. EXISTING SKILLS (Weight: 4x)
         skills = ' '.join([s.name for s in student.skills])
-        text_parts.append((skills + ' ') * 4)
+        text_parts.append((skills + ' ') * 1)
 
         # 4. SUMMARY & PROJECTS
         if student.summary:

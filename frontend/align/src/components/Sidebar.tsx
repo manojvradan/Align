@@ -1,67 +1,66 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FiGrid, FiFileText, FiBookOpen, FiLogOut, FiUploadCloud } from 'react-icons/fi';
+import { FiGrid, FiFileText, FiBookOpen, FiLogOut, FiUploadCloud, FiBriefcase } from 'react-icons/fi';
 import Icon from './Icon';
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContext';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
   const { logout } = useAuth();
 
-  const handleLogout = async() => {
-    try{
+  const handleLogout = async () => {
+    try {
       await logout();
     } catch (error) {
       console.error('Error signing out: ', error);
     }
-  } 
+  };
+
+  const navLinks = [
+    { to: '/', icon: FiGrid, text: 'Overview' },
+    { to: '/jobs', icon: FiBriefcase, text: 'Search Internships' },
+    { to: '/applied', icon: FiFileText, text: 'Applied Internships' },
+    { to: '/resume-parser', icon: FiUploadCloud, text: 'Resume Parser' },
+  ];
 
   return (
-    <div className="bg-white text-gray-800 w-64 p-6 flex-col justify-between hidden lg:flex">
+    <aside className="bg-white text-slate-800 w-64 flex flex-col justify-between p-6 hidden lg:flex border-r border-slate-200">
       <div>
-        <div className="flex items-center mb-10">
-          <div className="bg-purple-600 w-10 h-10 rounded-lg mr-3"></div>
-          <span className="text-xl font-bold">Student Dashboard</span>
+        <div className="flex items-center gap-3 mb-12">
+          <div className="bg-slate-800 w-10 h-10 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-xl">A</span>
+          </div>
+          <span className="text-xl font-bold text-slate-800">Align</span>
         </div>
         <nav>
-          <ul>
-            <li className="mb-4">
-              <Link to="/" className={`flex items-center p-3 rounded-lg ${isActive('/') ? 'text-purple-600 bg-purple-100 font-semibold' : 'text-gray-600 hover:bg-purple-100'}`}>
-                <Icon as={FiGrid} className="mr-3" />
-                Overview
-              </Link>
-            </li>
-            <li className="mb-4">
-              <Link to="/applied" className={`flex items-center p-3 rounded-lg ${isActive('/applied') ? 'text-purple-600 bg-purple-100 font-semibold' : 'text-gray-600 hover:bg-purple-100'}`}>
-                <Icon as={FiFileText} className="mr-3" />
-                Applied Jobs
-              </Link>
-            </li>
-            <li className="mb-4">
-               <Link to="/resume-parser" className={`flex items-center p-3 rounded-lg ${isActive('/resume-parser') ? 'text-purple-600 bg-purple-100 font-semibold' : 'text-gray-600 hover:bg-purple-100'}`}>
-                <Icon as={FiUploadCloud} className="mr-3" />
-                Resume Parser
-              </Link>
-            </li>
-            <li>
-              <Link to="/courses" className={`flex items-center p-3 rounded-lg ${isActive('/courses') ? 'text-purple-600 bg-purple-100 font-semibold' : 'text-gray-600 hover:bg-purple-100'}`}>
-                <Icon as={FiBookOpen} className="mr-3" />
-                Courses
-              </Link>
-            </li>
+          <ul className="space-y-2">
+            {navLinks.map((link) => (
+              <li key={link.to}>
+                <Link
+                  to={link.to}
+                  className={`flex items-center p-3 rounded-lg transition-colors duration-200 ${
+                    isActive(link.to)
+                      ? 'bg-slate-800 text-white font-semibold'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
+                  }`}
+                >
+                  <Icon as={link.icon} className="mr-3 text-lg" />
+                  {link.text}
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
       </div>
-      <div>
-        <button 
-          onClick={handleLogout}
-          className="flex items-center text-gray-600 hover:text-purple-600 w-full">
-          <Icon as={FiLogOut} className="mr-3" />
-          Log-out
-        </button>
-      </div>
-    </div>
+      <button
+        onClick={handleLogout}
+        className="flex items-center p-3 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-800 w-full transition-colors duration-200"
+      >
+        <Icon as={FiLogOut} className="mr-3 text-lg" />
+        Log out
+      </button>
+    </aside>
   );
 };
 

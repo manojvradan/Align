@@ -1,0 +1,336 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FiBook, FiTarget, FiCalendar, FiArrowRight, FiBriefcase, FiCheck, FiLoader, FiChevronLeft } from 'react-icons/fi';
+import Icon from '../components/Icon'; 
+import { useAuth } from '../context/AuthContext';
+import apiClient from '../api/axiosConfig';
+import axios from 'axios';
+import { FileUpload } from "../components/ui/file-upload";
+
+const SUGGESTED_ROLES = [
+  // Tech
+  "Frontend Developer", "Backend Developer", "Full Stack Developer",
+  "Data Scientist", "Product Manager", "UI/UX Designer", "Cybersecurity Analyst",
+  // Business & Finance
+  "Investment Banking Analyst", "Financial Analyst", "Management Consultant",
+  "Marketing Coordinator", "Business Analyst", "HR Specialist", "Accountant",
+  // Engineering
+  "Mechanical Engineer", "Civil Engineer", "Electrical Engineer", "Chemical Engineer",
+  // Creative & Arts
+  "Graphic Designer", "Content Writer", "Video Editor", "Architect",
+  // Science & Health
+  "Research Assistant", "Lab Technician", "Biomedical Engineer", "Nurse", "Pharmacist",
+  // Law & Policy
+  "Legal Assistant", "Policy Analyst", "Journalist"
+];
+
+const PARSER_ENDPOINT = "http://127.0.0.1:8001/upload-resume/";
+
+const Onboarding: React.FC = () => {
+  const { user, updateUser, fetchUserProfile } = useAuth(); // <--- Get fetchUserProfile
+  const navigate = useNavigate();
+
+  const [step, setStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    university: user?.university || '',
+    major: user?.major || '',
+    graduation_year: user?.graduation_year || new Date().getFullYear() + 1,
+    preferred_job_role: user?.preferred_job_role || 'Frontend Developer'
+  });
+
+   // Resume Data
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [extractedSkills, setExtractedSkills] = useState<string[]>([]);
+  const [parseError, setParseError] = useState<string | null>(null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleNextStep = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.university && formData.major) {
+      setStep(2);
+    } else {
+      alert("Please fill in all fields.");
+    }
+  };
+
+  const handleFileUpload = async (files: File[]) => {
+    if (files.length > 0) {
+      const file = files[0];
+      setResumeFile(file);
+      setParseError(null);
+      
+      // Auto-parse immediately upon upload
+      await parseResume(file);
+    }
+  };
+
+  const parseResume = async (file: File) => {
+    setIsParsing(true);
+    const data = new FormData();
+    data.append('file', file);
+
+    try {
+      // Call your Python Resume Parser Service
+      const response = await axios.post(PARSER_ENDPOINT, data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      const skills = response.data.extracted_skills || [];
+      setExtractedSkills(skills);
+    } catch (error) {
+      console.error("Resume parsing failed:", error);
+      setParseError("Could not parse resume. You can still continue, but we won't be able to auto-fill your skills.");
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const handleFinalSubmit = async () => {
+    setIsLoading(true);
+
+    try {
+      // 1. Update Profile Details
+      await apiClient.put('/users/me', formData);
+
+      // 2. If we have extracted skills, save them too
+      if (extractedSkills.length > 0) {
+        const skillsPayload = extractedSkills.map(skill => ({ name: skill }));
+        await apiClient.post('/users/me/skills/', skillsPayload);
+      }
+
+      console.log('Onboarding complete.');
+
+      // 3. Refresh Context
+      await fetchUserProfile();
+      if (updateUser) {
+        await updateUser({ ...user, ...formData });
+      }
+
+      // 4. Redirect
+      setTimeout(() => navigate('/'), 100);
+
+    } catch (error) {
+      console.error("Failed to save profile", error);
+      alert("Something went wrong saving your profile. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6">
+      <div className="max-w-xl w-full">
+        
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-slate-800 mb-3">
+            {step === 1 ? "Let's personalize your feed" : "Add your Resume"}
+          </h1>
+          <p className="text-slate-500 text-lg">
+            {step === 1 
+              ? "Tell us about your studies and what kind of internship you are looking for."
+              : "Upload your resume so our AI can extract your skills and match you to jobs."}
+          </p>
+        </div>
+
+        <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden transition-all duration-300">
+          
+          {/* Decorative Blob */}
+          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-slate-50 rounded-full z-0 opacity-50 pointer-events-none"></div>
+
+          {/* --- STEP 1: PROFILE FORM --- */}
+          {step === 1 && (
+            <form onSubmit={handleNextStep} className="space-y-6 relative z-10 animate-in fade-in slide-in-from-right-4 duration-300">
+              <div className="grid grid-cols-1 gap-6">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">University / College</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon as={FiBook} className="text-slate-400" />
+                    </div>
+                    <input
+                      type="text"
+                      name="university"
+                      required
+                      placeholder="e.g. Stanford University"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all"
+                      value={formData.university}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Major / Field of Study</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon as={FiTarget} className="text-slate-400" />
+                    </div>
+                    <input
+                      type="text"
+                      name="major"
+                      required
+                      placeholder="e.g. Computer Science"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all"
+                      value={formData.major}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Graduation Year</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon as={FiCalendar} className="text-slate-400" />
+                    </div>
+                    <input
+                      type="number"
+                      name="graduation_year"
+                      required
+                      min={new Date().getFullYear()}
+                      max={new Date().getFullYear() + 6}
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all"
+                      value={formData.graduation_year}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Preferred Internship Role</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon as={FiBriefcase} className="text-slate-400" />
+                    </div>
+                    <input
+                      type="text"
+                      name="preferred_job_role"
+                      list="job-roles-list" 
+                      required
+                      placeholder="e.g. Financial Analyst"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all"
+                      value={formData.preferred_job_role}
+                      onChange={handleChange}
+                    />
+                    
+                    {/* The Suggestions List */}
+                    <datalist id="job-roles-list">
+                      {SUGGESTED_ROLES.map(role => (
+                        <option key={role} value={role} />
+                      ))}
+                    </datalist>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                       <svg className="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold text-lg flex items-center justify-center hover:bg-slate-700 active:scale-[0.99] transition-all shadow-lg shadow-slate-200"
+                >
+                  Next Step <Icon as={FiArrowRight} className="ml-2" />
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* --- STEP 2: RESUME UPLOAD --- */}
+          {step === 2 && (
+            <div className="space-y-6 relative z-10 animate-in fade-in slide-in-from-right-4 duration-300">
+              
+              {/* Back Button */}
+              <button 
+                onClick={() => setStep(1)}
+                className="text-sm text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-2"
+              >
+                <Icon as={FiChevronLeft} /> Back to details
+              </button>
+
+              {/* Upload Component */}
+              <div className="w-full">
+                <FileUpload onChange={handleFileUpload} />
+              </div>
+
+              {/* Parsing Loading State */}
+              {isParsing && (
+                 <div className="flex items-center justify-center text-indigo-600 bg-indigo-50 p-4 rounded-lg">
+                    <Icon as={FiLoader} className="animate-spin mr-2" />
+                    <span>Analyzing your resume for skills...</span>
+                 </div>
+              )}
+
+              {/* Error State */}
+              {parseError && (
+                <div className="text-red-600 bg-red-50 p-3 rounded-lg text-sm text-center">
+                  {parseError}
+                </div>
+              )}
+
+              {/* Extracted Skills Preview */}
+              {!isParsing && extractedSkills.length > 0 && (
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  <div className="flex justify-between items-center mb-2">
+                     <p className="text-sm font-bold text-slate-700">We found {extractedSkills.length} skills:</p>
+                     <Icon as={FiCheck} className="text-green-500" />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {extractedSkills.slice(0, 10).map((skill, i) => ( // Show top 10 to save space
+                      <span key={i} className="bg-white border border-slate-200 px-2 py-1 rounded text-xs text-slate-600">
+                        {skill}
+                      </span>
+                    ))}
+                    {extractedSkills.length > 10 && (
+                      <span className="text-xs text-slate-400 py-1">+{extractedSkills.length - 10} more</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Final Submit Button */}
+              <div className="pt-4">
+                <button
+                  onClick={handleFinalSubmit}
+                  disabled={isLoading || isParsing}
+                  className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold text-lg flex items-center justify-center hover:bg-slate-700 active:scale-[0.99] transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-slate-200"
+                >
+                  {isLoading ? (
+                    <span className="flex items-center gap-2"><Icon as={FiLoader} className="animate-spin" /> Setting up...</span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      Complete Setup <Icon as={FiCheck} />
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>
+        
+        {/* Step Indicator */}
+        <div className="flex justify-center gap-2 mt-6">
+          <div className={`h-2 w-2 rounded-full transition-all ${step === 1 ? 'bg-slate-800 w-8' : 'bg-slate-300'}`}></div>
+          <div className={`h-2 w-2 rounded-full transition-all ${step === 2 ? 'bg-slate-800 w-8' : 'bg-slate-300'}`}></div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+export default Onboarding;

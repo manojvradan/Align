@@ -10,10 +10,13 @@ load_dotenv()
 # --- 1. Read Database Credentials from Environment Variables ---
 # These will be supplied by Docker Compose or your production environment
 DB_USER = os.getenv("DATABASE_USER", "postgres")
-DB_PASSWORD = os.getenv("DATABASE_PASSWORD", "Aligndb")
+DB_PASSWORD = os.getenv("DATABASE_PASSWORD")
 DB_HOST = os.getenv("DATABASE_HOST", "localhost")
 DB_PORT = os.getenv("DATABASE_PORT", "5432")
 DB_NAME = os.getenv("DATABASE_NAME", "postgres")
+
+if not DB_PASSWORD:
+    raise RuntimeError("DATABASE_PASSWORD environment variable is required")
 
 # --- 2. Construct the Database URL ---
 # The format is: "postgresql://<user>:<password>@<host>:<port>/<dbname>"
@@ -23,7 +26,10 @@ SQLALCHEMY_DATABASE_URL = (
 
 # --- 3. Create the SQLAlchemy Engine ---
 # The engine is the central source of connectivity to the database.
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+connect_args = {}
+if DB_HOST != "localhost" and DB_HOST != "127.0.0.1":
+    connect_args["sslmode"] = "require"
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args)
 
 # --- 4. Create a SessionLocal class ---
 # Each instance of SessionLocal will be a database session.

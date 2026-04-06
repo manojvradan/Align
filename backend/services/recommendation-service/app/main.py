@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
@@ -46,13 +47,16 @@ origins = [
     "http://127.0.0.1:8000",
 ]
 
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],       # Specifies the allowed origins
-    allow_credentials=True,      # Allows cookies to be included in requests
-    allow_methods=["*"],         # Allows all methods (GET, POST, etc.)
-    allow_headers=["*"],         # Allows all headers
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
 
 # --- Schemas ---
 # Re-define a simple Internship schema here for the response model

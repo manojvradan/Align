@@ -1,24 +1,29 @@
+import os
 import time
 import random
 import psycopg2
+from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import urllib.parse
 
+load_dotenv()
+
 # --- DATABASE CONFIGURATION ---
 db_config = {
-    "dbname": "postgres",
-    "user": "postgres",
-    "password": "Aligndb",
-    "host": "localhost",
-    "port": "5432"
+    "dbname": os.getenv("DATABASE_NAME", "postgres"),
+    "user": os.getenv("DATABASE_USER", "postgres"),
+    "password": os.getenv("DATABASE_PASSWORD"),
+    "host": os.getenv("DATABASE_HOST", "localhost"),
+    "port": os.getenv("DATABASE_PORT", "5432")
 }
 
 # --- SCRAPING TARGETS ---
 SEARCH_QUERY = "Computer Science Internship"
 LOCATION = "Australia"
+
 
 def setup_driver():
     """Sets up the Selenium Chrome WebDriver with anti-detection headers."""
@@ -29,9 +34,10 @@ def setup_driver():
     chrome_options.add_argument("--disable-dev-shm-usage")
     # Use a real user agent to avoid detection
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
-    
+
     driver = webdriver.Chrome(options=chrome_options)
     return driver
+
 
 def db_connect():
     conn = None
@@ -40,6 +46,7 @@ def db_connect():
     except psycopg2.OperationalError as e:
         print(f"Could not connect to the database: {e}")
     return conn
+
 
 def create_table(conn):
     """Create the internships table if it doesn't exist."""

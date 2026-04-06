@@ -138,3 +138,9 @@ class Internship(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CoverLetterResponse(BaseModel):
+    cover_letter: str
+    job_title: str
+    company: str

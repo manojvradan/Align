@@ -1,1 +1,25 @@
+# Environment files
 .env
+.env.local
+.env.*.local
+backend/services/recommendation-service/.env.local
+backend/services/resume-parser/.env.local
+backend/services/user_api/.env.local
+
+# Node
+node_modules/
+
+# Python virtual environments
+.venv/
+venv/
+backend/align/
+backend/venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# OS files
+.DS_Store
+Thumbs.db

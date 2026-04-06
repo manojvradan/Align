@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from shared.core.database import engine, get_db
 from shared.core import models
-from . import crud, schemas, security
+from . import crud, schemas, security, llm_service
 from typing import List
 from jose import JWTError
 from dotenv import load_dotenv
@@ -38,12 +38,14 @@ origins = [
     "http://127.0.0.1:8002",
 ]
 
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],         # Specifies the allowed origins
-    allow_credentials=True,      # Allows cookies to be included in requests
-    allow_methods=["*"],         # Allows all methods (GET, POST, etc.)
-    allow_headers=["*"],         # Allows all headers
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # --- Authentication Setup ---
@@ -352,3 +354,50 @@ def get_my_applied_jobs_list(
     the user has marked as applied.
     """
     return crud.get_applied_jobs(db, student_id=current_user.id)
+
+
+@app.post(
+    "/users/me/cover-letter/{internship_id}",
+    response_model=schemas.CoverLetterResponse
+)
+def generate_cover_letter_for_job(
+    internship_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """
+    Generates a tailored cover letter for the given internship
+    using the current user's profile and the job description.
+    """
+    # 1. Get the internship details
+    internship = db.query(models.Internship).filter(
+        models.Internship.id == internship_id
+    ).first()
+    if not internship:
+        raise HTTPException(status_code=404, detail="Internship not found")
+
+    # 2. Load full student profile
+    student = crud.get_student(db, student_id=current_user.id)
+    skill_names = [s.name for s in student.skills] if student.skills else []
+
+    # 3. Call LLM service
+    cover_letter_text = llm_service.generate_cover_letter(
+        student_name=student.full_name or "Applicant",
+        student_summary=student.summary or "",
+        skills=skill_names,
+        job_title=internship.title,
+        company=internship.company or "the company",
+        job_description=internship.description or ""
+    )
+
+    if not cover_letter_text:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate cover letter. Please try again."
+        )
+
+    return schemas.CoverLetterResponse(
+        cover_letter=cover_letter_text,
+        job_title=internship.title,
+        company=internship.company or ""
+    )

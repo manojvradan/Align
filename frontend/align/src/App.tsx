@@ -8,12 +8,17 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage'; 
 import ConfirmRegistrationPage from './pages/ConfirmRegistrationPage';
 import JobsPage from './pages/JobsPage';
+import Onboarding from './pages/Onboarding';
+import EditProfilePage from './pages/EditProfilePage';
+import AppliedJobsPage from './pages/AppliedJobsPage';
+import SavedJobsPage from './pages/SavedJobsPage';
 
 // Import Components and Context
 import DashboardLayout from './components/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import PublicRoute from './components/PublicRoute'; 
+import RequireOnboarding from './components/RequireOnboarding';
 
 const App: React.FC = () => {
   return (
@@ -28,10 +33,16 @@ const App: React.FC = () => {
         
         {/* Protected routes that require login */}
         <Route element={<ProtectedRoute />}>
-          <Route element={<DashboardLayout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/resume-parser" element={<ResumeParser />} />
-            <Route path="/jobs" element={<JobsPage />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+          <Route element={<RequireOnboarding />}>
+            <Route element={<DashboardLayout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/resume-parser" element={<ResumeParser />} />
+              <Route path="/jobs" element={<JobsPage />} />
+              <Route path="/profile" element={<EditProfilePage />} /> 
+              <Route path="/applied" element={<AppliedJobsPage />} />
+              <Route path="/saved" element={<SavedJobsPage />} />
+            </Route>
           </Route>
         </Route>
       </Routes>
