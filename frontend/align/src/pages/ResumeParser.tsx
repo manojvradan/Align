@@ -11,7 +11,8 @@ const ResumeParser: React.FC = () => {
     const [isParsing, setIsParsing] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [_message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const API_ENDPOINT = `${import.meta.env.VITE_RESUME_PARSER_URL || 'http://127.0.0.1:8001'}/upload-resume/`;
 

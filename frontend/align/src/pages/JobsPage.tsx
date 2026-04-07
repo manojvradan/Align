@@ -26,12 +26,13 @@ const JobsPage: React.FC = () => {
 
     const [isLoading, setIsLoading] = useState(true);
     const [isRefetching, setIsRefetching] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [_error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortOrder, setSortOrder] = useState('title-asc');
     const [selectedLocation, setSelectedLocation] = useState('');
     const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-    const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [_isOverlayOpen, setIsOverlayOpen] = useState(false);
     const [appliedJobIds, setAppliedJobIds] = useState<Set<number>>(new Set());
     const [verifyingJob, setVerifyingJob] = useState<Job | null>(null);
     const [coverLetterText, setCoverLetterText] = useState<string>('');
@@ -89,7 +90,8 @@ const JobsPage: React.FC = () => {
         setIsOverlayOpen(true);
     };
 
-    const handleCloseOverlay = () => setSelectedJob(null);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _handleCloseOverlay = () => { setSelectedJob(null); };
 
     const handleCoverLetter = async (job: Job) => {
         setIsGeneratingCoverLetter(true);

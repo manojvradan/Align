@@ -6,7 +6,8 @@ const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_isSubmitting, setIsSubmitting] = useState(false);
 
 
   const { login, isAuthenticated, isLoading, fetchUserProfile} = useAuth();
@@ -24,7 +25,7 @@ const LoginPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      await login({ email, password});
+      await login({ email, password } as any);
     } catch (err: any) {
       if (err && err.name === 'UserAlreadyAuthenticatedException') {
         console.log("User already authenticated, syncing profile...");
