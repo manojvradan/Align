@@ -43,7 +43,7 @@ const Onboarding: React.FC = () => {
 
    // Resume Data
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [_resumeFile, setResumeFile] = useState<File | null>(null);
   const [extractedSkills, setExtractedSkills] = useState<string[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
 
