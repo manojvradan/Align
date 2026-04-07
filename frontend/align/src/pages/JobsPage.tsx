@@ -40,7 +40,7 @@ const JobsPage: React.FC = () => {
 
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-    const RECOMMENDATION_SERVICE_URL = 'http://localhost:8002'; 
+    const RECOMMENDATION_SERVICE_URL = import.meta.env.VITE_RECOMMENDATION_URL || 'http://localhost:8002';
 
     const locations = [
         "Sydney",

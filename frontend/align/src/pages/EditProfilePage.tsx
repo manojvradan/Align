@@ -38,7 +38,7 @@ const EditProfilePage: React.FC = () => {
     const [newProject, setNewProject] = useState({ title: '', description: '' });
 
     // API endpoints
-    const API_BASE_URL = 'http://127.0.0.1:8000';
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
     // 2. The getAuthHeaders function is updated for Amplify v6
     const getAuthHeaders = async () => {

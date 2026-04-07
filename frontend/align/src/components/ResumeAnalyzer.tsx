@@ -4,7 +4,7 @@ import apiClient from '../api/axiosConfig'; // Your User API client (Port 8000)
 import { FiUploadCloud, FiPlus, FiLoader } from 'react-icons/fi';
 import Icon from './Icon';
 
-const RESUME_PARSER_URL = 'http://localhost:8001'; // Resume Parser Service
+const RESUME_PARSER_URL = import.meta.env.VITE_RESUME_PARSER_URL || 'http://localhost:8001';
 
 const ResumeAnalyzer: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);

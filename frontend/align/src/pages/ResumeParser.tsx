@@ -13,8 +13,7 @@ const ResumeParser: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-    // This should be in an environment variable
-    const API_ENDPOINT = "http://127.0.0.1:8001/upload-resume/"; 
+    const API_ENDPOINT = `${import.meta.env.VITE_RESUME_PARSER_URL || 'http://127.0.0.1:8001'}/upload-resume/`;
 
     // New handler for the Aceternity FileUpload component
     const handleFileUpload = (files: File[]) => {

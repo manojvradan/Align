@@ -24,7 +24,7 @@ const SUGGESTED_ROLES = [
   "Legal Assistant", "Policy Analyst", "Journalist"
 ];
 
-const PARSER_ENDPOINT = "http://127.0.0.1:8001/upload-resume/";
+const PARSER_ENDPOINT = `${import.meta.env.VITE_RESUME_PARSER_URL || 'http://127.0.0.1:8001'}/upload-resume/`;
 
 const Onboarding: React.FC = () => {
   const { user, updateUser, fetchUserProfile } = useAuth(); // <--- Get fetchUserProfile
