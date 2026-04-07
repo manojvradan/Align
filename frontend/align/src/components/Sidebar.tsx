@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FiGrid, FiFileText, FiBookOpen, FiLogOut, FiUploadCloud, FiBriefcase } from 'react-icons/fi';
+import { FiGrid, FiFileText, FiLogOut, FiUploadCloud, FiBriefcase } from 'react-icons/fi';
 import Icon from './Icon';
 import { useAuth } from '../context/AuthContext';
 

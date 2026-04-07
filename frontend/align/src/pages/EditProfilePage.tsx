@@ -35,13 +35,14 @@ const EditProfilePage: React.FC = () => {
 
     // State for adding new skills and projects
     const [newSkill, setNewSkill] = useState('');
-    const [newProject, setNewProject] = useState({ title: '', description: '' });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [_newProject, _setNewProject] = useState({ title: '', description: '' });
 
     // API endpoints
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
     // 2. The getAuthHeaders function is updated for Amplify v6
-    const getAuthHeaders = async () => {
+    const getAuthHeaders = async (): Promise<Record<string, string>> => {
         try {
             // Use the new fetchAuthSession API
             const session = await fetchAuthSession();

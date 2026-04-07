@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiSearch, FiBell } from 'react-icons/fi';
+import { FiBell } from 'react-icons/fi';
 import Icon from './Icon';
 import { useAuth } from '../context/AuthContext';
 

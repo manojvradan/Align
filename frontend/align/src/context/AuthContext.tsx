@@ -36,7 +36,7 @@ interface AuthContextType {
   register: (userData: unknown) => Promise<void>;
   logout: () => void;
   confirmRegistration: (email: string, code: string) => Promise<void>;
-  fetchUserProfile: () => Promise<void>; 
+  fetchUserProfile: () => Promise<boolean | void>; 
   updateUser: (updatedData: Partial<User>) => Promise<void>;
 }
 
