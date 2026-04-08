@@ -15,7 +15,7 @@ const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -33,7 +33,7 @@ const LoginPage: React.FC = () => {
         if (syncSuccess) {
           // If the sync is successful, we navigate immediately.
           // This is the logic that fixes the "stuck" page.
-          navigate('/', { replace: true });
+          navigate('/dashboard', { replace: true });
         } else {
           setError('Could not sync your profile. Please try again.');
         }
@@ -50,7 +50,7 @@ const LoginPage: React.FC = () => {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return (

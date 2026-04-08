@@ -1,6 +1,7 @@
 import { createContext, useState, useContext, useEffect, type ReactNode } from 'react';
 import apiClient from '../api/axiosConfig';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { Hub } from 'aws-amplify/utils';
 import { 
   signIn, 
@@ -90,7 +91,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(data);
       return true;
     } catch (error) {
-      console.error("Failed to fetch user profile from our backend", error);
+      if (axios.isAxiosError(error)) {
+        console.error('Failed to fetch user profile from backend', {
+          status: error.response?.status,
+          baseURL: apiClient.defaults.baseURL,
+          requestUrl: error.config?.url,
+          responseData: error.response?.data,
+        });
+      } else {
+        console.error('Failed to fetch user profile from backend', error);
+      }
       // This might happen if the user is in Cognito but not yet in our DB
       setUser(null);
       return false;

@@ -11,7 +11,7 @@ const PublicRoute: React.FC = () => {
     return <div>Loading...</div>; // Or a loading spinner
   }
 
-  return isAuthenticated ? <Navigate to="/" /> : <Outlet />;
+  return isAuthenticated ? <Navigate to="/dashboard" /> : <Outlet />;
 };
 
 export default PublicRoute;

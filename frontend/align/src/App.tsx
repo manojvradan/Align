@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 
 // Import Pages
+import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import ResumeParser from './pages/ResumeParser';
 import LoginPage from './pages/LoginPage';
@@ -24,7 +25,10 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <Routes>
-        {/* Public routes are now wrapped in PublicRoute */}
+        {/* Landing page — always accessible */}
+        <Route path="/" element={<LandingPage />} />
+
+        {/* Public routes redirect authenticated users to dashboard */}
         <Route element={<PublicRoute />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -33,10 +37,10 @@ const App: React.FC = () => {
         
         {/* Protected routes that require login */}
         <Route element={<ProtectedRoute />}>
-        <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route element={<RequireOnboarding />}>
             <Route element={<DashboardLayout />}>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/resume-parser" element={<ResumeParser />} />
               <Route path="/jobs" element={<JobsPage />} />
               <Route path="/profile" element={<EditProfilePage />} /> 

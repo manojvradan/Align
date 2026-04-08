@@ -114,7 +114,7 @@ const Onboarding: React.FC = () => {
       }
 
       // 4. Redirect
-      setTimeout(() => navigate('/'), 100);
+      setTimeout(() => navigate('/dashboard'), 100);
 
     } catch (error) {
       console.error("Failed to save profile", error);

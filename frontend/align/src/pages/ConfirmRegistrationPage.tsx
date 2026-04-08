@@ -1,11 +1,14 @@
 // src/pages/ConfirmRegistrationPage.tsx
 
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const ConfirmRegistrationPage: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [searchParams] = useSearchParams();
+  const initialEmail = searchParams.get('email') || '';
+
+  const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -21,14 +24,17 @@ const ConfirmRegistrationPage: React.FC = () => {
     setSuccessMessage('');
     setIsLoading(true);
 
-    if (!email || !code) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedCode = code.trim();
+
+    if (!normalizedEmail || !normalizedCode) {
         setError("Please provide both an email and the verification code.");
         setIsLoading(false);
         return;
     }
 
     try {
-      await confirmRegistration(email, code);
+      await confirmRegistration(normalizedEmail, normalizedCode);
       setSuccessMessage('Account confirmed successfully! You can now log in.');
       // Optional: Automatically redirect after a few seconds
       setTimeout(() => {

@@ -18,7 +18,7 @@ const Sidebar: React.FC = () => {
   };
 
   const navLinks = [
-    { to: '/', icon: FiGrid, text: 'Overview' },
+    { to: '/dashboard', icon: FiGrid, text: 'Overview' },
     { to: '/jobs', icon: FiBriefcase, text: 'Search Internships' },
     { to: '/applied', icon: FiFileText, text: 'Applied Internships' },
     { to: '/resume-parser', icon: FiUploadCloud, text: 'Resume Parser' },
