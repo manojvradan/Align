@@ -139,7 +139,8 @@ def generate_cover_letter(
         skills: List[str],
         job_title: str,
         company: str,
-        job_description: str
+        job_description: str,
+        resume_text: str = ""
 ) -> str:
     """
     Uses an LLM to generate a professional cover letter tailored to
@@ -151,6 +152,12 @@ def generate_cover_letter(
 
     skill_str = ", ".join(skills) if skills else "Not specified"
 
+    # Truncate resume text to avoid hitting token limits (~3000 chars ≈ 750 tokens)
+    resume_section = ""
+    if resume_text:
+        truncated = resume_text[:3000]
+        resume_section = f"\n    - Full Resume:\n{truncated}"
+
     prompt = f"""
     You are an expert career advisor writing a professional cover letter
     for a university student applying to an internship.
@@ -158,7 +165,7 @@ def generate_cover_letter(
     **Applicant Info:**
     - Name: {student_name}
     - Summary: {student_summary or "A motivated university student seeking an internship opportunity."}
-    - Key Skills: {skill_str}
+    - Key Skills: {skill_str}{resume_section}
 
     **Job Details:**
     - Title: {job_title}
@@ -168,10 +175,11 @@ def generate_cover_letter(
     **Instructions:**
     1. Write a concise, professional cover letter (3-4 paragraphs).
     2. Highlight how the applicant's skills and background align with the role.
-    3. Keep the tone enthusiastic but professional.
-    4. Do NOT fabricate experience the student doesn't have.
-    5. Use a standard cover letter format with greeting and sign-off.
-    6. Address it to "Hiring Manager" if no specific name is given.
+    3. Draw on specific experiences and projects from the resume where relevant.
+    4. Keep the tone enthusiastic but professional.
+    5. Do NOT fabricate experience the student doesn't have.
+    6. Use a standard cover letter format with greeting and sign-off.
+    7. Address it to "Hiring Manager" if no specific name is given.
 
     Output ONLY the cover letter text, no extra commentary.
     """

@@ -68,6 +68,7 @@ class Student(Base):
     summary = Column(Text, nullable=True)
     preferred_job_role = Column(String, nullable=True)
     search_keywords = Column(Text, nullable=True)
+    resume_text = Column(Text, nullable=True)
 
     skills = relationship(
         "Skill",

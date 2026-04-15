@@ -100,39 +100,51 @@ const AppliedJobsPage: React.FC = () => {
 
     if (isLoading) {
         return (
-            <div className="p-8 min-h-screen flex flex-col items-center justify-center bg-gray-50">
-                <div className="animate-pulse text-xl text-gray-500 font-medium">Loading your applications...</div>
+            <div>
+                <div className="mb-6 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-white/10 animate-pulse" />
+                    <div className="space-y-2">
+                        <div className="h-6 w-40 bg-slate-200 dark:bg-white/10 rounded animate-pulse" />
+                        <div className="h-4 w-56 bg-slate-200 dark:bg-white/10 rounded animate-pulse" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {[0,1,2,3,4,5].map(i => (
+                        <div key={i} className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 h-36 animate-pulse" />
+                    ))}
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="p-8 bg-gray-50 min-h-screen">
+        <div>
             {/* Header */}
-            <div className="mb-8 flex items-center gap-4">
-                <div className="p-3 bg-blue-100 text-blue-600 rounded-xl shadow-sm">
-                    <Icon as={FiBriefcase} className="text-2xl" />
+            <div className="mb-6 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/15 flex items-center justify-center shrink-0">
+                    <Icon as={FiBriefcase} className="text-xl text-indigo-500" />
                 </div>
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Applied Jobs</h1>
-                    <p className="text-gray-600">
-                        You have sent <span className="font-bold text-blue-600">{jobs.length}</span> applications so far.
+                    <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Applied Jobs</h1>
+                    <p className="text-slate-500 dark:text-white/40 text-sm">
+                        You have sent{' '}
+                        <span className="font-semibold text-indigo-500">{jobs.length}</span> applications so far.
                     </p>
                 </div>
             </div>
 
             {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {jobs.map(job => (
-                    <div 
-                        key={job.id} 
-                        onClick={() => handleJobClick(job)} 
+                    <div
+                        key={job.id}
+                        onClick={() => handleJobClick(job)}
                         className="cursor-pointer h-full"
                     >
-                        <JobCard 
-                            job={job} 
+                        <JobCard
+                            job={job}
                             layoutId={`job-card-${job.id}`}
-                            isApplied={true} // Always true on this page
+                            isApplied={true}
                             isSaved={savedJobIds.has(job.id)}
                             onToggleSave={handleToggleSave}
                             onViewJob={handleViewJob}
@@ -142,17 +154,17 @@ const AppliedJobsPage: React.FC = () => {
 
                 {/* Empty State */}
                 {jobs.length === 0 && (
-                    <div className="col-span-full flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-gray-200 rounded-xl">
-                        <div className="bg-gray-100 p-4 rounded-full mb-4">
-                            <Icon as={FiBriefcase} className="text-4xl text-gray-400" />
+                    <div className="col-span-full flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl">
+                        <div className="w-14 h-14 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-4">
+                            <Icon as={FiBriefcase} className="text-2xl text-slate-400 dark:text-white/25" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-700 mb-2">No applications yet</h3>
-                        <p className="text-gray-500 mb-6 max-w-md">
-                            It looks like you haven't applied to any internships yet. Check out the job feed to find opportunities.
+                        <h3 className="text-base font-bold text-slate-700 dark:text-white mb-1">No applications yet</h3>
+                        <p className="text-slate-500 dark:text-white/40 text-sm mb-6 max-w-xs">
+                            You haven't applied to any internships yet. Check out the job feed to find opportunities.
                         </p>
-                        <button 
+                        <button
                             onClick={() => navigate('/jobs')}
-                            className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+                            className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-violet-600 text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
                         >
                             <Icon as={FiSearch} /> Browse Internships
                         </button>

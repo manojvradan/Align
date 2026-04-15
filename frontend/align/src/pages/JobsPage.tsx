@@ -250,92 +250,101 @@ const JobsPage: React.FC = () => {
 
     if (isLoading) {
         return (
-            <div className="p-8 flex justify-center items-center h-64">
-                <div className="text-xl text-gray-500 animate-pulse">Curating your feed...</div>
+            <div>
+                <div className="mb-8">
+                    <div className="h-8 w-72 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse mb-2" />
+                    <div className="h-4 w-48 bg-slate-200 dark:bg-white/10 rounded animate-pulse" />
+                </div>
+                <div className="flex gap-3 mb-6">
+                    <div className="h-11 flex-1 max-w-xs bg-slate-200 dark:bg-white/10 rounded-xl animate-pulse" />
+                    <div className="h-11 w-36 bg-slate-200 dark:bg-white/10 rounded-xl animate-pulse" />
+                    <div className="h-11 w-36 bg-slate-200 dark:bg-white/10 rounded-xl animate-pulse" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[0,1,2,3,4,5].map(i => (
+                        <div key={i} className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 h-36 animate-pulse" />
+                    ))}
+                </div>
             </div>
         );
     }
 
     if (error) {
-        return <div className="p-8 text-center text-red-600">{error}</div>;
+        return <div className="p-4 text-center text-red-500 dark:text-red-400">{error}</div>;
     }
 
     return (
-        <div className="p-8 bg-gray-50 min-h-screen">
-            <div className="max-w-7xl mx-auto">
-                <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Internships & Opportunities</h1>
-                        <p className="text-gray-600">
-                            We found <span className="font-bold text-violet-600">{jobs.filter(j => j.isRecommended).length}</span> matches tailored to your profile.
-                        </p>
-                    </div>
-
-                    {/* --- 4. NEW REFRESH BUTTON --- */}
-                    <button 
-                        onClick={handleManualRefresh}
-                        disabled={isRefetching}
-                        className={`mt-4 md:mt-0 flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors ${isRefetching ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                        <ArrowPathIcon className={`h-5 w-5 ${isRefetching ? 'animate-spin' : ''}`} />
-                        <span>{isRefetching ? 'Updating...' : 'Refresh Feed'}</span>
-                    </button>
+        <div>
+            <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Internships & Opportunities</h1>
+                    <p className="text-slate-500 dark:text-white/40 text-sm mt-1">
+                        We found <span className="font-semibold text-indigo-500">{jobs.filter(j => j.isRecommended).length}</span> matches tailored to your profile.
+                    </p>
                 </div>
-                {/* Filters */}
-                <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                    <input
-                        type="text"
-                        placeholder="Search by title or company"
-                        className="p-3 border border-gray-200 rounded-lg w-full md:w-1/3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <div className="flex space-x-4 w-full md:w-auto">
-                        <select
-                            className="p-3 border border-gray-200 rounded-lg w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                            value={selectedLocation}
-                            onChange={(e) => setSelectedLocation(e.target.value)}
-                        >
-                            <option value="">All Locations</option>
-                            {locations.map(location => (
+                <button
+                    onClick={handleManualRefresh}
+                    disabled={isRefetching}
+                    className={`flex items-center gap-2 px-4 py-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-medium text-slate-700 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors ${isRefetching ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    <ArrowPathIcon className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+                    {isRefetching ? 'Updating...' : 'Refresh Feed'}
+                </button>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col md:flex-row gap-3 mb-6">
+                <input
+                    type="text"
+                    placeholder="Search by title or company"
+                    className="flex-1 px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <div className="flex gap-3">
+                    <select
+                        className="px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={selectedLocation}
+                        onChange={(e) => setSelectedLocation(e.target.value)}
+                    >
+                        <option value="">All Locations</option>
+                        {locations.map(location => (
                                 <option key={location} value={location}>{location}</option>
                             ))}
                         </select>
-                        <select
-                            className="p-3 border border-gray-200 rounded-lg w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                            value={sortOrder}
-                            onChange={(e) => setSortOrder(e.target.value)}
-                        >
-                            <option value="title-asc">Title (A-Z)</option>
-                            <option value="title-desc">Title (Z-A)</option>
-                            <option value="company-asc">Company (A-Z)</option>
-                            <option value="company-desc">Company (Z-A)</option>
-                        </select>
-                    </div>
+                    <select
+                        className="px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={sortOrder}
+                        onChange={(e) => setSortOrder(e.target.value)}
+                    >
+                        <option value="title-asc">Title (A-Z)</option>
+                        <option value="title-desc">Title (Z-A)</option>
+                        <option value="company-asc">Company (A-Z)</option>
+                        <option value="company-desc">Company (Z-A)</option>
+                    </select>
                 </div>
+            </div>
 
-                {/* Job Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredAndSortedJobs.map(job => (
+            {/* Job Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredAndSortedJobs.map(job => (
                     <div key={job.id} onClick={() => handleJobClick(job)} className="cursor-pointer h-full">
-                        {/* We wrap JobCard in a div to capture the click */}
-                        <JobCard 
+                        <JobCard
                             job={job}
                             layoutId={`job-card-${job.id}`}
                             isSaved={savedJobIds.has(job.id)}
                             isApplied={appliedJobIds.has(job.id)}
                             onViewJob={handleViewJob}
-                            onToggleSave={handleToggleSave} 
-                            />
+                            onToggleSave={handleToggleSave}
+                        />
                     </div>
                 ))}
-                    
-                    {filteredAndSortedJobs.length === 0 && (
-                        <div className="col-span-full text-center py-12 text-gray-500">
-                            No internships found matching your criteria.
-                        </div>
-                    )}
-                </div>
+
+                {filteredAndSortedJobs.length === 0 && (
+                    <div className="col-span-full text-center py-16 text-slate-400 dark:text-white/25">
+                        No internships found matching your criteria.
+                    </div>
+                )}
             </div>
             <AnimatePresence>
                 {selectedJob && (
@@ -361,19 +370,19 @@ const JobsPage: React.FC = () => {
             {/* Cover Letter Modal */}
             {coverLetterJob && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center">
-                    <div 
-                        className="absolute inset-0 bg-black/40" 
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                         onClick={() => { setCoverLetterJob(null); setCoverLetterText(''); }}
                     />
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col mx-4">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                    <div className="relative bg-white dark:bg-[#13131f] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col mx-4">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/10">
                             <div>
-                                <h2 className="text-xl font-bold text-gray-900">Cover Letter</h2>
-                                <p className="text-sm text-gray-500">{coverLetterJob.title} at {coverLetterJob.company}</p>
+                                <h2 className="text-base font-bold text-slate-800 dark:text-white">Cover Letter</h2>
+                                <p className="text-sm text-slate-500 dark:text-white/40">{coverLetterJob.title} at {coverLetterJob.company}</p>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => { setCoverLetterJob(null); setCoverLetterText(''); }}
-                                className="p-2 rounded-full hover:bg-gray-100 text-gray-500"
+                                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 dark:text-white/40 transition-colors"
                             >
                                 &times;
                             </button>
@@ -381,26 +390,26 @@ const JobsPage: React.FC = () => {
                         <div className="flex-1 overflow-y-auto px-6 py-4">
                             {isGeneratingCoverLetter ? (
                                 <div className="flex flex-col items-center justify-center py-12">
-                                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"></div>
-                                    <p className="text-gray-500 animate-pulse">Crafting your cover letter...</p>
+                                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 mb-4" />
+                                    <p className="text-slate-400 dark:text-white/30 animate-pulse text-sm">Crafting your cover letter...</p>
                                 </div>
                             ) : (
-                                <pre className="whitespace-pre-wrap font-sans text-gray-700 leading-relaxed text-sm">
+                                <pre className="whitespace-pre-wrap font-sans text-slate-700 dark:text-white/70 leading-relaxed text-sm">
                                     {coverLetterText}
                                 </pre>
                             )}
                         </div>
                         {coverLetterText && !isGeneratingCoverLetter && (
-                            <div className="flex gap-3 px-6 py-4 border-t border-gray-100">
+                            <div className="flex gap-3 px-6 py-4 border-t border-slate-100 dark:border-white/10">
                                 <button
                                     onClick={() => { navigator.clipboard.writeText(coverLetterText); }}
-                                    className="flex-1 bg-indigo-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+                                    className="flex-1 bg-gradient-to-r from-indigo-500 to-violet-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:opacity-90 transition-opacity"
                                 >
                                     Copy to Clipboard
                                 </button>
                                 <button
                                     onClick={() => handleCoverLetter(coverLetterJob)}
-                                    className="px-4 py-2.5 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                                    className="px-4 py-2.5 border border-slate-200 dark:border-white/10 rounded-xl font-semibold text-slate-700 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
                                 >
                                     Regenerate
                                 </button>

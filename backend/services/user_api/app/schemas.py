@@ -97,6 +97,7 @@ class StudentUpdate(BaseModel):
     major: Optional[str] = None
     graduation_year: Optional[int] = None
     preferred_job_role: Optional[str] = None
+    resume_text: Optional[str] = None
 
 
 # Properties to return to client

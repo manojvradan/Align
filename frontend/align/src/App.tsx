@@ -18,11 +18,13 @@ import SavedJobsPage from './pages/SavedJobsPage';
 import DashboardLayout from './components/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import PublicRoute from './components/PublicRoute'; 
 import RequireOnboarding from './components/RequireOnboarding';
 
 const App: React.FC = () => {
   return (
+    <ThemeProvider>
     <AuthProvider>
       <Routes>
         {/* Landing page — always accessible */}
@@ -51,6 +53,7 @@ const App: React.FC = () => {
         </Route>
       </Routes>
     </AuthProvider>
+    </ThemeProvider>
   );
 };
 

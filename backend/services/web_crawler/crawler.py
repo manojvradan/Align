@@ -2,12 +2,13 @@ import os
 import time
 import random
 import psycopg2
+import argparse
 from dotenv import load_dotenv
 from selenium import webdriver
-from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import urllib.parse
+from typing import Optional
 
 load_dotenv()
 
@@ -20,9 +21,34 @@ db_config = {
     "port": os.getenv("DATABASE_PORT", "5432")
 }
 
+if db_config["host"] not in {"localhost", "127.0.0.1"}:
+    db_config["sslmode"] = "require"
+
 # --- SCRAPING TARGETS ---
 SEARCH_QUERY = "Computer Science Internship"
 LOCATION = "Australia"
+LIMIT_PER_SOURCE = int(os.getenv("CRAWLER_LIMIT_PER_SOURCE", "10"))
+
+DOMAIN_HINTS = {
+    "pharmacy": ["pharmacy", "pharmacist", "pharmacology"],
+    "software": [
+        "software", "frontend", "backend", "full stack", "developer",
+        "engineering", "computer science",
+    ],
+    "data": [
+        "data", "machine learning", "ai", "analytics", "bi", "scientist",
+    ],
+    "finance": [
+        "finance", "financial", "accounting", "investment", "banking",
+        "economics",
+    ],
+    "marketing": ["marketing", "brand", "seo", "content", "growth"],
+    "mechanical": ["mechanical", "cad", "manufacturing"],
+    "civil": ["civil", "structural", "construction"],
+    "electrical": ["electrical", "electronics", "embedded"],
+    "legal": ["legal", "law", "compliance", "policy"],
+    "health": ["health", "nursing", "biomedical", "clinical"],
+}
 
 
 def setup_driver():
@@ -46,6 +72,68 @@ def db_connect():
     except psycopg2.OperationalError as e:
         print(f"Could not connect to the database: {e}")
     return conn
+
+
+def infer_domain(
+    role: Optional[str],
+    major: Optional[str],
+    keywords: Optional[str],
+) -> Optional[str]:
+    haystack = " ".join(filter(None, [role, major, keywords])).lower()
+    if not haystack:
+        return None
+
+    for domain, hints in DOMAIN_HINTS.items():
+        if any(hint in haystack for hint in hints):
+            return domain
+    return None
+
+
+def build_search_query(
+    role: Optional[str],
+    major: Optional[str],
+    keywords: Optional[str],
+) -> str:
+    if role and role.strip():
+        return f"{role.strip()} Internship"
+
+    domain = infer_domain(role, major, keywords)
+    if domain:
+        return f"{domain.title()} Internship"
+
+    return SEARCH_QUERY
+
+
+def get_target_queries_from_students(conn):
+    """
+    Build crawl queries from current students so scraping can adapt to each domain.
+    Returns a de-duplicated list like:
+    - "Frontend Developer Internship"
+    - "Pharmacy Internship"
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT preferred_job_role, major, search_keywords
+            FROM students
+            WHERE preferred_job_role IS NOT NULL
+               OR major IS NOT NULL
+               OR search_keywords IS NOT NULL;
+            """
+        )
+        rows = cur.fetchall()
+
+    if not rows:
+        return [SEARCH_QUERY]
+
+    queries = []
+    for preferred_job_role, major, search_keywords in rows:
+        query = build_search_query(preferred_job_role, major, search_keywords)
+        if query:
+            queries.append(query)
+
+    unique_queries = sorted(set(queries))
+    return unique_queries if unique_queries else [SEARCH_QUERY]
 
 
 def create_table(conn):
@@ -131,7 +219,7 @@ def get_job_description(driver, url, source):
         print(f"Failed to get description for {url}: {e}")
         return None
 
-def scrape_linkedin(driver, query, location):
+def scrape_linkedin(driver, query, location, limit_per_source=10):
     print("--- Scraping LinkedIn ---")
     internships_data = []
     
@@ -152,8 +240,7 @@ def scrape_linkedin(driver, query, location):
 
     print(f"Found {len(job_cards)} cards on LinkedIn. Fetching details...")
 
-    # Limit to first 10 for testing speed (remove [:10] for production)
-    for job in job_cards[:10]: 
+    for job in job_cards[:limit_per_source]:
         try:
             title = job.find('h3', class_='base-search-card__title').text.strip()
             company = job.find('h4', class_='base-search-card__subtitle').text.strip()
@@ -171,7 +258,7 @@ def scrape_linkedin(driver, query, location):
             
     return internships_data
 
-def scrape_seek(driver, query, location):
+def scrape_seek(driver, query, location, limit_per_source=10):
     print("--- Scraping Seek ---")
     internships_data = []
     
@@ -199,7 +286,7 @@ def scrape_seek(driver, query, location):
 
     print(f"Found {len(job_listings)} cards on Seek. Fetching details...")
 
-    for job in job_listings[:10]: # Limit for testing
+    for job in job_listings[:limit_per_source]:
         try:
             title_elem = job.find('a', attrs={'data-automation': 'jobTitle'})
             company_elem = job.find('a', attrs={'data-automation': 'jobCompany'})
@@ -226,35 +313,72 @@ def scrape_seek(driver, query, location):
 
     return internships_data
 
+def run_crawl(conn, queries, location, limit_per_source):
+    all_internships = []
+    driver = setup_driver()
+
+    try:
+        for query in queries:
+            print(f"\n=== Crawling query: {query} | location: {location} ===")
+            all_internships.extend(
+                scrape_linkedin(
+                    driver,
+                    query,
+                    location,
+                    limit_per_source=limit_per_source,
+                )
+            )
+            all_internships.extend(
+                scrape_seek(
+                    driver,
+                    query,
+                    location,
+                    limit_per_source=limit_per_source,
+                )
+            )
+    except Exception as e:
+        print(f"Global scraping error: {e}")
+    finally:
+        driver.quit()
+
+    print(f"\nTotal internships scraped: {len(all_internships)}")
+    inserted_count = insert_internships(conn, all_internships)
+    print(f"Successfully processed {inserted_count} internships.")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Domain-aware internship crawler")
+    parser.add_argument("--mode", choices=["static", "users"], default="users")
+    parser.add_argument("--query", default=SEARCH_QUERY)
+    parser.add_argument("--location", default=LOCATION)
+    parser.add_argument("--limit-per-source", type=int, default=LIMIT_PER_SOURCE)
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+
     conn = db_connect()
     if not conn:
         return
         
     try:
         create_table(conn)
-        
-        all_internships = []
-        driver = setup_driver()
-        
-        try:
-            # 1. Scrape LinkedIn (Most reliable for guest access)
-            all_internships.extend(scrape_linkedin(driver, SEARCH_QUERY, LOCATION))
-            
-            # 2. Scrape Seek (Harder, might fail in headless)
-            all_internships.extend(scrape_seek(driver, SEARCH_QUERY, LOCATION))
-            
-            # Glassdoor is omitted intentionally to prevent script hanging.
-            
-        except Exception as e:
-            print(f"Global scraping error: {e}")
-        finally:
-            driver.quit()
-        
-        print(f"\nTotal internships scraped: {len(all_internships)}")
-        
-        inserted_count = insert_internships(conn, all_internships)
-        print(f"Successfully processed {inserted_count} internships.")
+
+        if args.mode == "users":
+            queries = get_target_queries_from_students(conn)
+        else:
+            queries = [args.query]
+
+        print(f"Crawler mode: {args.mode}")
+        print(f"Queries to crawl ({len(queries)}): {queries}")
+
+        run_crawl(
+            conn,
+            queries=queries,
+            location=args.location,
+            limit_per_source=args.limit_per_source,
+        )
         
     finally:
         if conn:

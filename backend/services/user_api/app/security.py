@@ -5,15 +5,17 @@ from fastapi.security import OAuth2PasswordBearer
 import os
 import requests
 
-AWS_REGION = os.getenv("VITE_AWS_REGION", "us-east-1")  # CHANGE TO YOUR REGION
-COGNITO_USER_POOL_ID = os.getenv(
+AWS_REGION = os.getenv("AWS_REGION") or os.getenv("VITE_AWS_REGION", "ap-southeast-2")
+COGNITO_USER_POOL_ID = os.getenv("COGNITO_USER_POOL_ID") or os.getenv(
     "VITE_COGNITO_USER_POOL_ID",
     "your-user-pool-id"
     )
-COGNITO_APP_CLIENT_ID = os.getenv(
+COGNITO_APP_CLIENT_ID = os.getenv("COGNITO_APP_CLIENT_ID") or os.getenv(
     "VITE_COGNITO_APP_CLIENT_ID",
     "your-app-client-id"
     )
+
+print(f"Cognito config: region={AWS_REGION}, pool_id={COGNITO_USER_POOL_ID[:10]}..., client_id={COGNITO_APP_CLIENT_ID[:10]}...")
 
 COGNITO_JWKS_URL = (
     f"https://cognito-idp.{AWS_REGION}.amazonaws.com/"

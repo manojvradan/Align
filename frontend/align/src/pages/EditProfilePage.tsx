@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiSave, FiUpload } from 'react-icons/fi';
+import { FiPlus, FiSave, FiUser, FiBook, FiCalendar, FiBriefcase, FiX } from 'react-icons/fi';
 // 1. Import the new fetchAuthSession function from 'aws-amplify/auth'
 import { fetchAuthSession } from 'aws-amplify/auth';
 
@@ -150,108 +150,149 @@ const EditProfilePage: React.FC = () => {
     };
 
     if (isLoading) {
-        return <div className="p-8 text-center">Loading profile...</div>;
+        return (
+            <div>
+                <div className="mb-8">
+                    <div className="h-8 w-56 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse mb-2" />
+                    <div className="h-4 w-40 bg-slate-200 dark:bg-white/10 rounded animate-pulse" />
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl h-56 animate-pulse" />
+                    <div className="lg:col-span-2 space-y-4">
+                        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl h-64 animate-pulse" />
+                        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl h-40 animate-pulse" />
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     if (error) {
-        return <div className="p-8 text-center text-red-600">{error}</div>;
+        return (
+            <div className="p-8 text-center text-red-500 dark:text-red-400">{error}</div>
+        );
     }
-    
-    if (!profile) {
-        return null; // Or some placeholder
-    }
+
+    if (!profile) return null;
 
     return (
-        <div className="p-8 bg-gray-50 h-full">
-            <h1 className="text-3xl font-bold text-gray-800 mb-8">Edit Your Profile</h1>
+        <div>
+            {/* Page header */}
+            <div className="mb-8">
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Edit Profile</h1>
+                <p className="text-slate-500 dark:text-white/40 text-sm mt-1">
+                    Keep your information up to date for better internship matches.
+                </p>
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Profile Picture Section */}
-                <div className="lg:col-span-1">
-                    <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-xl font-bold mb-4">Profile Picture</h2>
-                        <div className="flex flex-col items-center">
-                            <img
-                                src={profile.profile_picture_url || 'https://via.placeholder.com/150'}
-                                alt="Profile"
-                                className="w-32 h-32 rounded-full object-cover mb-4"
-                            />
-                            <button className="flex items-center bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
-                                <FiUpload className="mr-2" />
-                                Upload New Picture
-                            </button>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Avatar card */}
+                <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex flex-col items-center text-center">
+                    <div className="relative mb-4">
+                        <img
+                            src={profile.profile_picture_url || `https://ui-avatars.com/api/?name=${encodeURIComponent((profile.first_name || '') + ' ' + (profile.last_name || ''))}&background=6366f1&color=fff&size=128`}
+                            alt="Profile"
+                            className="w-24 h-24 rounded-full object-cover border-4 border-white dark:border-white/10 shadow-lg"
+                        />
+                        <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-emerald-500 rounded-full border-2 border-white dark:border-[#0d0d1a] flex items-center justify-center">
+                            <FiUser className="text-white text-xs" />
                         </div>
+                    </div>
+                    <h2 className="font-bold text-slate-800 dark:text-white text-lg leading-tight">
+                        {profile.first_name} {profile.last_name}
+                    </h2>
+                    <p className="text-slate-500 dark:text-white/40 text-sm mt-0.5">{profile.email}</p>
+                    <div className="mt-4 w-full pt-4 border-t border-slate-100 dark:border-white/10 space-y-2 text-sm text-left">
+                        {profile.university && (
+                            <div className="flex items-center gap-2 text-slate-600 dark:text-white/50">
+                                <FiBook className="shrink-0 text-indigo-500" />
+                                <span className="truncate">{profile.university}</span>
+                            </div>
+                        )}
+                        {profile.major && (
+                            <div className="flex items-center gap-2 text-slate-600 dark:text-white/50">
+                                <FiBriefcase className="shrink-0 text-violet-500" />
+                                <span className="truncate">{profile.major}</span>
+                            </div>
+                        )}
+                        {profile.graduation_year && (
+                            <div className="flex items-center gap-2 text-slate-600 dark:text-white/50">
+                                <FiCalendar className="shrink-0 text-emerald-500" />
+                                <span>Class of {profile.graduation_year}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* University and Details Section */}
-                <div className="lg:col-span-2">
-                    <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-xl font-bold mb-4">Your Details</h2>
+                {/* Right column */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Details card */}
+                    <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6">
+                        <h2 className="text-base font-bold text-slate-800 dark:text-white mb-5">Your Details</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input
-                                type="text"
-                                name="university"
-                                value={profile.university || ''}
-                                onChange={handleProfileChange}
-                                placeholder="University"
-                                className="p-2 border border-gray-300 rounded-md"
-                            />
-                            <input
-                                type="text"
-                                name="major"
-                                value={profile.major || ''}
-                                onChange={handleProfileChange}
-                                placeholder="Major"
-                                className="p-2 border border-gray-300 rounded-md"
-                            />
-                            <input
-                                type="number"
-                                name="graduation_year"
-                                value={profile.graduation_year || ''}
-                                onChange={handleProfileChange}
-                                placeholder="Graduation Year"
-                                className="p-2 border border-gray-300 rounded-md"
-                            />
-                            <input
-                                type="text"
-                                name="preferred_job_role"
-                                value={profile.preferred_job_role || ''}
-                                onChange={handleProfileChange}
-                                placeholder="Graduation Year"
-                                className="p-2 border border-gray-300 rounded-md"
-                            />
+                            {[
+                                { name: 'university', placeholder: 'University', icon: FiBook },
+                                { name: 'major', placeholder: 'Major', icon: FiBriefcase },
+                                { name: 'graduation_year', placeholder: 'Graduation Year', icon: FiCalendar, type: 'number' },
+                                { name: 'preferred_job_role', placeholder: 'Preferred Job Role', icon: FiBriefcase },
+                            ].map(({ name, placeholder, icon: Icon, type }) => (
+                                <div key={name} className="relative">
+                                    <Icon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30 text-sm" />
+                                    <input
+                                        type={type || 'text'}
+                                        name={name}
+                                        value={(profile[name as keyof UserProfile] as string | number) ?? ''}
+                                        onChange={handleProfileChange}
+                                        placeholder={placeholder}
+                                        className="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-500/50 transition-colors"
+                                    />
+                                </div>
+                            ))}
                         </div>
-                        <button 
+                        <button
                             onClick={handleProfileUpdate}
-                            className="mt-6 flex items-center bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
+                            className="mt-5 flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity shadow-lg shadow-indigo-500/25"
                         >
-                            <FiSave className="mr-2" />
+                            <FiSave />
                             Save Changes
                         </button>
                     </div>
 
-                    {/* Skills Section */}
-                    <div className="bg-white p-6 rounded-lg shadow-md mt-8">
-                        <h2 className="text-xl font-bold mb-4">Your Skills</h2>
-                        <div className="flex flex-wrap gap-2 mb-4">
-                            {profile.skills.map(skill => (
-                                <span key={skill.id} className="bg-gray-200 text-gray-800 px-3 py-1 rounded-full text-sm">
+                    {/* Skills card */}
+                    <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6">
+                        <h2 className="text-base font-bold text-slate-800 dark:text-white mb-4">Skills</h2>
+                        <div className="flex flex-wrap gap-2 mb-5">
+                            {profile.skills.length === 0 && (
+                                <p className="text-slate-400 dark:text-white/30 text-sm">No skills added yet.</p>
+                            )}
+                            {profile.skills.map((skill) => (
+                                <span
+                                    key={skill.id}
+                                    className="inline-flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-500/20 px-3 py-1 rounded-full text-sm font-medium"
+                                >
                                     {skill.name}
+                                    <button
+                                        className="text-indigo-400 dark:text-indigo-400/60 hover:text-indigo-600 dark:hover:text-indigo-200 transition-colors"
+                                        onClick={() => setProfile({ ...profile, skills: profile.skills.filter(s => s.id !== skill.id) })}
+                                        aria-label={`Remove ${skill.name}`}
+                                    >
+                                        <FiX className="w-3 h-3" />
+                                    </button>
                                 </span>
                             ))}
                         </div>
-                        <div className="flex items-center">
+                        <div className="flex gap-2">
                             <input
                                 type="text"
                                 value={newSkill}
                                 onChange={(e) => setNewSkill(e.target.value)}
-                                placeholder="Add a new skill"
-                                className="p-2 border border-gray-300 rounded-md flex-grow"
+                                onKeyDown={(e) => e.key === 'Enter' && handleAddSkill()}
+                                placeholder="Add a skill (e.g. Python)"
+                                className="flex-1 px-4 py-2.5 text-sm bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-500/50 transition-colors"
                             />
-                            <button 
+                            <button
                                 onClick={handleAddSkill}
-                                className="ml-2 bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600"
+                                className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
                             >
                                 <FiPlus />
                             </button>

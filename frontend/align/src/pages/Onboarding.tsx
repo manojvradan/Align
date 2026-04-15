@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiBook, FiTarget, FiCalendar, FiArrowRight, FiBriefcase, FiCheck, FiLoader, FiChevronLeft } from 'react-icons/fi';
 import Icon from '../components/Icon'; 
@@ -38,14 +38,50 @@ const Onboarding: React.FC = () => {
     university: user?.university || '',
     major: user?.major || '',
     graduation_year: user?.graduation_year || new Date().getFullYear() + 1,
-    preferred_job_role: user?.preferred_job_role || 'Frontend Developer'
+    preferred_job_role: user?.preferred_job_role || ''
   });
 
    // Resume Data
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_resumeFile, setResumeFile] = useState<File | null>(null);
   const [extractedSkills, setExtractedSkills] = useState<string[]>([]);
+  const [inferredSkills, setInferredSkills] = useState<string[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
+
+  const PARSE_STEPS = [
+    'Reading your resume...',
+    'Fetching skills from resume...',
+    'Drawing parallels to job roles...',
+    'LLM enriching your profile...',
+    'Almost there...'
+  ];
+  const [parseStepIndex, setParseStepIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isParsing) { setParseStepIndex(0); return; }
+    const interval = setInterval(() => {
+      setParseStepIndex(i => (i + 1) % PARSE_STEPS.length);
+    }, 1800);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isParsing]);
+
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const roleDropdownRef = useRef<HTMLDivElement>(null);
+
+  const filteredRoles = SUGGESTED_ROLES.filter(role =>
+    role.toLowerCase().includes(formData.preferred_job_role.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (roleDropdownRef.current && !roleDropdownRef.current.contains(e.target as Node)) {
+        setRoleDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -99,10 +135,21 @@ const Onboarding: React.FC = () => {
       // 1. Update Profile Details
       await apiClient.put('/users/me', formData);
 
-      // 2. If we have extracted skills, save them too
+      // 2. If we have extracted skills, save them and run LLM enrichment
       if (extractedSkills.length > 0) {
         const skillsPayload = extractedSkills.map(skill => ({ name: skill }));
         await apiClient.post('/users/me/skills/', skillsPayload);
+
+        // 3. Enrich profile: LLM infers additional skills + generates summary
+        const enrichRes = await apiClient.post('/users/me/enrich');
+        const allSkillNames: string[] = (enrichRes.data.skills ?? []).map(
+          (s: { name: string }) => s.name
+        );
+        const extractedLower = extractedSkills.map(s => s.toLowerCase());
+        const newInferred = allSkillNames.filter(
+          n => !extractedLower.includes(n.toLowerCase())
+        );
+        setInferredSkills(newInferred);
       }
 
       console.log('Onboarding complete.');
@@ -113,8 +160,8 @@ const Onboarding: React.FC = () => {
         await updateUser({ ...user, ...formData });
       }
 
-      // 4. Redirect
-      setTimeout(() => navigate('/dashboard'), 100);
+      // 4. Redirect — slight delay so user can see AI-inferred skills
+      setTimeout(() => navigate('/dashboard'), 1800);
 
     } catch (error) {
       console.error("Failed to save profile", error);
@@ -140,7 +187,7 @@ const Onboarding: React.FC = () => {
           </p>
         </div>
 
-        <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden transition-all duration-300">
+        <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm relative transition-all duration-300">
           
           {/* Decorative Blob */}
           <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-slate-50 rounded-full z-0 opacity-50 pointer-events-none"></div>
@@ -160,7 +207,7 @@ const Onboarding: React.FC = () => {
                       name="university"
                       required
                       placeholder="e.g. Stanford University"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all text-slate-800"
                       value={formData.university}
                       onChange={handleChange}
                     />
@@ -178,7 +225,7 @@ const Onboarding: React.FC = () => {
                       name="major"
                       required
                       placeholder="e.g. Computer Science"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all text-slate-800"
                       value={formData.major}
                       onChange={handleChange}
                     />
@@ -199,7 +246,7 @@ const Onboarding: React.FC = () => {
                       required
                       min={new Date().getFullYear()}
                       max={new Date().getFullYear() + 6}
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all text-slate-800"
                       value={formData.graduation_year}
                       onChange={handleChange}
                     />
@@ -208,32 +255,42 @@ const Onboarding: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Preferred Internship Role</label>
-                  <div className="relative">
+                  <div className="relative" ref={roleDropdownRef}>
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Icon as={FiBriefcase} className="text-slate-400" />
                     </div>
                     <input
                       type="text"
                       name="preferred_job_role"
-                      list="job-roles-list" 
                       required
+                      autoComplete="off"
                       placeholder="e.g. Financial Analyst"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all text-slate-800"
                       value={formData.preferred_job_role}
                       onChange={handleChange}
+                      onFocus={() => setRoleDropdownOpen(true)}
                     />
-                    
-                    {/* The Suggestions List */}
-                    <datalist id="job-roles-list">
-                      {SUGGESTED_ROLES.map(role => (
-                        <option key={role} value={role} />
-                      ))}
-                    </datalist>
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                       <svg className="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </div>
+                    {roleDropdownOpen && filteredRoles.length > 0 && formData.preferred_job_role.length > 0 && (
+                      <ul className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {filteredRoles.map(role => (
+                          <li
+                            key={role}
+                            className="px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
+                            onMouseDown={() => {
+                              setFormData(prev => ({ ...prev, preferred_job_role: role }));
+                              setRoleDropdownOpen(false);
+                            }}
+                          >
+                            {role}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
               </div>
@@ -268,10 +325,24 @@ const Onboarding: React.FC = () => {
 
               {/* Parsing Loading State */}
               {isParsing && (
-                 <div className="flex items-center justify-center text-indigo-600 bg-indigo-50 p-4 rounded-lg">
-                    <Icon as={FiLoader} className="animate-spin mr-2" />
-                    <span>Analyzing your resume for skills...</span>
-                 </div>
+                <div className="flex flex-col items-center justify-center bg-indigo-50 p-5 rounded-lg gap-2">
+                  <div className="flex items-center text-indigo-600 gap-2">
+                    <Icon as={FiLoader} className="animate-spin shrink-0" />
+                    <span className="text-sm font-medium transition-all duration-500">
+                      {PARSE_STEPS[parseStepIndex]}
+                    </span>
+                  </div>
+                  <div className="flex gap-1 mt-1">
+                    {PARSE_STEPS.map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-1 rounded-full transition-all duration-500 ${
+                          i === parseStepIndex ? 'w-4 bg-indigo-500' : 'w-1.5 bg-indigo-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
               )}
 
               {/* Error State */}
@@ -281,23 +352,46 @@ const Onboarding: React.FC = () => {
                 </div>
               )}
 
-              {/* Extracted Skills Preview */}
+              {/* Extracted + AI-Inferred Skills Preview */}
               {!isParsing && extractedSkills.length > 0 && (
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                  <div className="flex justify-between items-center mb-2">
-                     <p className="text-sm font-bold text-slate-700">We found {extractedSkills.length} skills:</p>
-                     <Icon as={FiCheck} className="text-green-500" />
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-3">
+                  {/* Parsed skills */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-sm font-bold text-slate-700">We found {extractedSkills.length} skills:</p>
+                      <Icon as={FiCheck} className="text-green-500" />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {extractedSkills.slice(0, 10).map((skill, i) => (
+                        <span key={i} className="bg-white border border-slate-200 px-2 py-1 rounded text-xs text-slate-600">
+                          {skill}
+                        </span>
+                      ))}
+                      {extractedSkills.length > 10 && (
+                        <span className="text-xs text-slate-400 py-1">+{extractedSkills.length - 10} more</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {extractedSkills.slice(0, 10).map((skill, i) => ( // Show top 10 to save space
-                      <span key={i} className="bg-white border border-slate-200 px-2 py-1 rounded text-xs text-slate-600">
-                        {skill}
-                      </span>
-                    ))}
-                    {extractedSkills.length > 10 && (
-                      <span className="text-xs text-slate-400 py-1">+{extractedSkills.length - 10} more</span>
-                    )}
-                  </div>
+
+                  {/* AI-inferred skills */}
+                  {inferredSkills.length > 0 && (
+                    <div className="border-t border-slate-200 pt-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">✦ AI</span>
+                        <p className="text-sm font-bold text-slate-700">AI enriched {inferredSkills.length} more skills:</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {inferredSkills.map((skill, i) => (
+                          <span
+                            key={i}
+                            className="bg-white border border-indigo-400 ring-1 ring-indigo-300 shadow-sm shadow-indigo-100 px-2 py-1 rounded text-xs text-indigo-700 font-medium"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

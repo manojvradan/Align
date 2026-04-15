@@ -387,7 +387,8 @@ def generate_cover_letter_for_job(
         skills=skill_names,
         job_title=internship.title,
         company=internship.company or "the company",
-        job_description=internship.description or ""
+        job_description=internship.description or "",
+        resume_text=student.resume_text or ""
     )
 
     if not cover_letter_text:

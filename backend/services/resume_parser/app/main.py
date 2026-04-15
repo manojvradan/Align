@@ -71,5 +71,6 @@ async def upload_and_parse_resume(file: UploadFile = File(...)):
     return schemas.ResumeParseResponse(
         filename=file.filename,
         s3_url=s3_url,
-        extracted_skills=skills
+        extracted_skills=skills,
+        raw_text=text
     )

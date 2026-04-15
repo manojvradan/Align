@@ -6,7 +6,7 @@ const RequireOnboarding = () => {
 
 
   if (isLoading) {
-    return <div className="p-4">Loading user profile...</div>; // Or a spinner
+    return null; // ProtectedRoute already shows the skeleton while isLoading is true
   }
 
   if (!user) {
