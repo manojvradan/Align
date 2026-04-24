@@ -89,6 +89,13 @@ def get_recommendations_for_student(
 
     try:
         print(f"Generating recommendations for: {student_profile.email}")
+        # Re-fit if the service started before any internships were in the DB
+        if recommender.internship_matrix is None:
+            all_internships = crud.get_all_internships(db)
+            if not all_internships:
+                return {"recommendations": []}
+            recommender.fit(all_internships)
+
         # 2. Get recommendations from our in-memory model
         recommended_internships = recommender.recommend(
             student_profile, top_n=10

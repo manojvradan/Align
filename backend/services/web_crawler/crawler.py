@@ -25,7 +25,7 @@ if db_config["host"] not in {"localhost", "127.0.0.1"}:
     db_config["sslmode"] = "require"
 
 # --- SCRAPING TARGETS ---
-SEARCH_QUERY = "Computer Science Internship"
+SEARCH_QUERY = "Data Science Internship"
 LOCATION = "Australia"
 LIMIT_PER_SOURCE = int(os.getenv("CRAWLER_LIMIT_PER_SOURCE", "10"))
 
@@ -349,7 +349,8 @@ def run_crawl(conn, queries, location, limit_per_source):
 def parse_args():
     parser = argparse.ArgumentParser(description="Domain-aware internship crawler")
     parser.add_argument("--mode", choices=["static", "users"], default="users")
-    parser.add_argument("--query", default=SEARCH_QUERY)
+    parser.add_argument("--query", action="append", dest="queries", metavar="QUERY",
+                        help="Search query (can be repeated for multiple queries, e.g. --query Pharmacy --query 'Data Science')")
     parser.add_argument("--location", default=LOCATION)
     parser.add_argument("--limit-per-source", type=int, default=LIMIT_PER_SOURCE)
     return parser.parse_args()
@@ -368,7 +369,10 @@ def main():
         if args.mode == "users":
             queries = get_target_queries_from_students(conn)
         else:
-            queries = [args.query]
+            if args.queries:
+                queries = [f"{q.strip()} Internship" if "internship" not in q.lower() else q.strip() for q in args.queries]
+            else:
+                queries = [SEARCH_QUERY]
 
         print(f"Crawler mode: {args.mode}")
         print(f"Queries to crawl ({len(queries)}): {queries}")

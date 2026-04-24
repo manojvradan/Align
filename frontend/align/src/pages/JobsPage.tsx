@@ -41,6 +41,7 @@ const JobsPage: React.FC = () => {
     const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false);
 
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
 
     const RECOMMENDATION_SERVICE_URL = import.meta.env.VITE_RECOMMENDATION_URL || 'http://localhost:8002';
 
@@ -149,66 +150,59 @@ const JobsPage: React.FC = () => {
     const fetchAndMergeJobs = async () => {
             if (!user?.id) return;
             setIsLoading(true);
+            setIsLoadingRecommendations(true);
 
             try {
                 const timeoutMs = 8000;
 
-                // Fetch General Jobs and Personal Recommendations in parallel
-                const [generalResponse, recResponse, savedResponse, appliedResponse] = await Promise.allSettled([
-                    apiClient.get('/jobs/', { timeout: timeoutMs }), 
-                    axios.get(`${RECOMMENDATION_SERVICE_URL}/recommendations/${user.id}`, { timeout: timeoutMs }),
-                    apiClient.get('/users/me/saved-jobs/ids'),
-                    apiClient.get('/users/me/applied-jobs/ids')
+                // Start all fetches simultaneously
+                const generalPromise = apiClient.get('/jobs/', { timeout: timeoutMs });
+                const recPromise = axios.get(`${RECOMMENDATION_SERVICE_URL}/recommendations/${user.id}`, { timeout: timeoutMs });
+                const savedPromise = apiClient.get('/users/me/saved-jobs/ids');
+                const appliedPromise = apiClient.get('/users/me/applied-jobs/ids');
+
+                // Resolve general jobs + saved/applied first so the grid appears immediately
+                const [generalResponse, savedResponse, appliedResponse] = await Promise.allSettled([
+                    generalPromise,
+                    savedPromise,
+                    appliedPromise,
                 ]);
-                console.log("General Jobs Response:", generalResponse);
+
                 let generalJobs: Job[] = [];
-                let recommendedJobs: Job[] = [];
 
-                if (appliedResponse.status === 'fulfilled') {
-                    setAppliedJobIds(new Set(appliedResponse.value.data));
-                }
+                if (appliedResponse.status === 'fulfilled') setAppliedJobIds(new Set(appliedResponse.value.data));
+                if (savedResponse.status === 'fulfilled') setSavedJobIds(new Set(savedResponse.value.data));
 
-                // 1. Process General Jobs
                 if (generalResponse.status === 'fulfilled') {
                     generalJobs = generalResponse.value.data;
                 } else {
-                    console.error("Failed to load general jobs");
+                    console.error('Failed to load general jobs');
                 }
 
-                // 2. Process Recommendations
-                if (recResponse.status === 'fulfilled') {
-                    // Mark these as recommended
-                    recommendedJobs = recResponse.value.data.recommendations.map((job: Job) => ({
+                // Show general jobs immediately
+                setJobs(generalJobs);
+                setIsLoading(false);
+
+                // Now wait for recommendations and merge them in
+                try {
+                    const recResponse = await recPromise;
+                    const recommendedJobs: Job[] = recResponse.data.recommendations.map((job: Job) => ({
                         ...job,
-                        isRecommended: true
+                        isRecommended: true,
                     }));
-                } else {
-                    console.warn("Recommendation service unavailable");
+                    const recommendedIds = new Set(recommendedJobs.map(j => j.id));
+                    const remainingGeneralJobs = generalJobs.filter(job => !recommendedIds.has(job.id));
+                    setJobs([...recommendedJobs, ...remainingGeneralJobs]);
+                } catch {
+                    console.warn('Recommendation service unavailable');
+                } finally {
+                    setIsLoadingRecommendations(false);
                 }
-
-                if (savedResponse.status === 'fulfilled') {
-                    setSavedJobIds(new Set(savedResponse.value.data));
-                }
-
-                // 3. Merge Logic:
-                // We want Recommended jobs first, then the REST of the general jobs.
-                // We must ensure we don't show the same job twice.
-
-                // Create a Set of IDs that are already in the recommended list
-                const recommendedIds = new Set(recommendedJobs.map(j => j.id));
-
-                // Filter general jobs to exclude ones that are already recommended
-                const remainingGeneralJobs = generalJobs.filter(job => !recommendedIds.has(job.id));
-
-                // Combine: Recommended at top + Remaining at bottom
-                const mergedJobs = [...recommendedJobs, ...remainingGeneralJobs];
-
-                setJobs(mergedJobs);
 
             } catch (error) {
-                console.error("Critical error fetching jobs", error);
-            } finally {
+                console.error('Critical error fetching jobs', error);
                 setIsLoading(false);
+                setIsLoadingRecommendations(false);
             }
         };
 
@@ -324,6 +318,16 @@ const JobsPage: React.FC = () => {
                     </select>
                 </div>
             </div>
+
+            {/* Recommendations loading banner */}
+            {isLoadingRecommendations && (
+                <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-xl">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent shrink-0" />
+                    <p className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">
+                        Finding your AI-matched internships…
+                    </p>
+                </div>
+            )}
 
             {/* Job Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

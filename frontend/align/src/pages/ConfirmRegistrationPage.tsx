@@ -72,12 +72,12 @@ const ConfirmRegistrationPage: React.FC = () => {
               placeholder="you@example.com"
               required
               disabled={isLoading || !!successMessage}
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 disabled:bg-gray-100"
+              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 disabled:bg-gray-100 text-gray-800"
             />
           </div>
           
           <div>
-            <label className="text-sm font-medium text-gray-700">Verification Code</label>
+            <label className="text-sm font-medium text-gray-700 ">Verification Code</label>
             <input
               type="text"
               value={code}
@@ -85,7 +85,7 @@ const ConfirmRegistrationPage: React.FC = () => {
               placeholder="123456"
               required
               disabled={isLoading || !!successMessage}
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 disabled:bg-gray-100"
+              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 disabled:bg-gray-100 text-gray-800"
             />
           </div>
           

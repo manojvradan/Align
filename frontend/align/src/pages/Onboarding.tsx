@@ -66,6 +66,26 @@ const Onboarding: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isParsing]);
 
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichmentComplete, setEnrichmentComplete] = useState(false);
+  const ENRICH_STEPS = [
+    'Analyzing your skill patterns...',
+    'Finding connections in your experience...',
+    'Discovering hidden strengths...',
+    'Enriching your profile with AI...',
+    'Almost ready...',
+  ];
+  const [enrichStepIndex, setEnrichStepIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isEnriching) { setEnrichStepIndex(0); return; }
+    const interval = setInterval(() => {
+      setEnrichStepIndex(i => (i + 1) % ENRICH_STEPS.length);
+    }, 1600);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEnriching]);
+
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -82,6 +102,14 @@ const Onboarding: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleDeleteExtractedSkill = (index: number) => {
+    setExtractedSkills(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDeleteInferredSkill = (index: number) => {
+    setInferredSkills(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -128,19 +156,26 @@ const Onboarding: React.FC = () => {
     }
   };
 
-  const handleFinalSubmit = async () => {
+  // Step 1 of 2: Save prerequisites + collect AI-enriched data to display
+  const handleEnrich = async () => {
     setIsLoading(true);
-
     try {
-      // 1. Update Profile Details
       await apiClient.put('/users/me', formData);
-
-      // 2. If we have extracted skills, save them and run LLM enrichment
       if (extractedSkills.length > 0) {
         const skillsPayload = extractedSkills.map(skill => ({ name: skill }));
         await apiClient.post('/users/me/skills/', skillsPayload);
+      }
+    } catch (error) {
+      console.error("Failed to save profile", error);
+      alert("Something went wrong saving your profile. Please try again.");
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(false);
 
-        // 3. Enrich profile: LLM infers additional skills + generates summary
+    if (extractedSkills.length > 0) {
+      setIsEnriching(true);
+      try {
         const enrichRes = await apiClient.post('/users/me/enrich');
         const allSkillNames: string[] = (enrichRes.data.skills ?? []).map(
           (s: { name: string }) => s.name
@@ -150,25 +185,35 @@ const Onboarding: React.FC = () => {
           n => !extractedLower.includes(n.toLowerCase())
         );
         setInferredSkills(newInferred);
+      } catch (error) {
+        console.error("Enrichment failed:", error);
+      } finally {
+        setIsEnriching(false);
+        setEnrichmentComplete(true);
       }
+    } else {
+      setEnrichmentComplete(true);
+    }
+  };
 
-      console.log('Onboarding complete.');
-
-      // 3. Refresh Context
+  // Step 2 of 2: Save final curated skills and navigate
+  const handleGoToDashboard = async () => {
+    setIsLoading(true);
+    try {
+      // Save the final curated skill list (extracted + inferred that weren't deleted)
+      const finalSkills = [...extractedSkills, ...inferredSkills];
+      if (finalSkills.length > 0) {
+        const skillsPayload = finalSkills.map(skill => ({ name: skill }));
+        await apiClient.post('/users/me/skills/', skillsPayload);
+      }
       await fetchUserProfile();
-      if (updateUser) {
-        await updateUser({ ...user, ...formData });
-      }
-
-      // 4. Redirect — slight delay so user can see AI-inferred skills
-      setTimeout(() => navigate('/dashboard'), 1800);
-
+      if (updateUser) await updateUser({ ...user, ...formData });
     } catch (error) {
-      console.error("Failed to save profile", error);
-      alert("Something went wrong saving your profile. Please try again.");
+      console.error("Failed to save final skills", error);
     } finally {
       setIsLoading(false);
     }
+    navigate('/dashboard');
   };
 
   return (
@@ -362,14 +407,18 @@ const Onboarding: React.FC = () => {
                       <Icon as={FiCheck} className="text-green-500" />
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {extractedSkills.slice(0, 10).map((skill, i) => (
-                        <span key={i} className="bg-white border border-slate-200 px-2 py-1 rounded text-xs text-slate-600">
+                      {extractedSkills.map((skill, i) => (
+                        <span key={i} className="flex items-center gap-1 bg-white border border-slate-200 px-2 py-1 rounded text-xs text-slate-600">
                           {skill}
+                          {!isEnriching && !enrichmentComplete && (
+                            <button
+                              onClick={() => handleDeleteExtractedSkill(i)}
+                              className="text-slate-300 hover:text-red-400 transition-colors leading-none"
+                              title="Remove skill"
+                            >×</button>
+                          )}
                         </span>
                       ))}
-                      {extractedSkills.length > 10 && (
-                        <span className="text-xs text-slate-400 py-1">+{extractedSkills.length - 10} more</span>
-                      )}
                     </div>
                   </div>
 
@@ -379,14 +428,26 @@ const Onboarding: React.FC = () => {
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">✦ AI</span>
                         <p className="text-sm font-bold text-slate-700">AI enriched {inferredSkills.length} more skills:</p>
+                        <div className="relative group ml-auto shrink-0">
+                          <div className="w-4 h-4 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] font-bold cursor-default select-none">?</div>
+                          <div className="absolute right-0 bottom-6 w-64 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20 leading-relaxed">
+                            We're making connections to add skills you might have missed word-for-word in your resume — things implied by your experience that a recruiter would expect you to know.
+                            <div className="absolute right-2 -bottom-1.5 w-3 h-3 bg-slate-800 rotate-45" />
+                          </div>
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {inferredSkills.map((skill, i) => (
                           <span
                             key={i}
-                            className="bg-white border border-indigo-400 ring-1 ring-indigo-300 shadow-sm shadow-indigo-100 px-2 py-1 rounded text-xs text-indigo-700 font-medium"
+                            className="flex items-center gap-1 bg-white border border-indigo-400 ring-1 ring-indigo-300 shadow-sm shadow-indigo-100 px-2 py-1 rounded text-xs text-indigo-700 font-medium"
                           >
                             {skill}
+                            <button
+                              onClick={() => handleDeleteInferredSkill(i)}
+                              className="text-indigo-300 hover:text-red-400 transition-colors leading-none"
+                              title="Remove skill"
+                            >×</button>
                           </span>
                         ))}
                       </div>
@@ -395,22 +456,85 @@ const Onboarding: React.FC = () => {
                 </div>
               )}
 
-              {/* Final Submit Button */}
-              <div className="pt-4">
-                <button
-                  onClick={handleFinalSubmit}
-                  disabled={isLoading || isParsing}
-                  className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold text-lg flex items-center justify-center hover:bg-slate-700 active:scale-[0.99] transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-slate-200"
-                >
-                  {isLoading ? (
-                    <span className="flex items-center gap-2"><Icon as={FiLoader} className="animate-spin" /> Setting up...</span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      Complete Setup <Icon as={FiCheck} />
-                    </span>
+              {/* Enrichment Animation */}
+              {isEnriching && (
+                <div className="bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 rounded-xl p-6 flex flex-col items-center gap-4">
+                  <div className="relative w-16 h-16">
+                    <div className="absolute inset-0 rounded-full border-2 border-indigo-200 animate-ping opacity-40" />
+                    <div className="absolute inset-0 rounded-full border-2 border-indigo-300 animate-spin" style={{ animationDuration: '3s' }} />
+                    <div className="absolute inset-3 rounded-full border-2 border-violet-400 animate-spin" style={{ animationDuration: '2s', animationDirection: 'reverse' }} />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-3 h-3 rounded-full bg-indigo-500 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-indigo-700">{ENRICH_STEPS[enrichStepIndex]}</p>
+                    <p className="text-xs text-indigo-400 mt-1 animate-pulse">Our AI is working its magic</p>
+                  </div>
+                  <div className="flex gap-1">
+                    {ENRICH_STEPS.map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-1 rounded-full transition-all duration-500 ${
+                          i === enrichStepIndex ? 'w-4 bg-indigo-500' : 'w-1.5 bg-indigo-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Before extraction: placeholder button */}
+              {!isEnriching && !enrichmentComplete && extractedSkills.length === 0 && !isParsing && (
+                <div className="pt-4">
+                  <button
+                    disabled
+                    className="w-full bg-slate-100 text-slate-400 border border-slate-200 py-3.5 rounded-xl font-bold text-lg flex items-center justify-center cursor-not-allowed"
+                  >
+                    Extract my skills
+                  </button>
+                  <p className="text-center text-xs text-slate-400 mt-2">Upload your resume above to get started</p>
+                </div>
+              )}
+
+              {/* After extraction: Enhance with AI button */}
+              {!isEnriching && !enrichmentComplete && extractedSkills.length > 0 && (
+                <div className="pt-4">
+                  <button
+                    onClick={handleEnrich}
+                    disabled={isLoading || isParsing}
+                    className="w-full bg-gradient-to-r from-indigo-500 to-violet-600 text-white py-3.5 rounded-xl font-bold text-lg flex items-center justify-center hover:opacity-90 cursor-pointer active:scale-[0.99] transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/25"
+                  >
+                    {isLoading ? (
+                      <span className="flex items-center gap-2"><Icon as={FiLoader} className="animate-spin" /> Setting up...</span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        ✦ Enhance with AI <Icon as={FiArrowRight} />
+                      </span>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Go to Dashboard */}
+              {enrichmentComplete && (
+                <div className="pt-2 space-y-3">
+                  {extractedSkills.length > 0 && (
+                    <p className="text-center text-xs text-slate-400">Remove any skills that don't apply, then head to your dashboard.</p>
                   )}
-                </button>
-              </div>
+                  <button
+                    onClick={handleGoToDashboard}
+                    disabled={isLoading}
+                    className="w-full bg-gradient-to-r from-indigo-500 to-violet-600 text-white py-3.5 rounded-xl font-bold text-lg flex items-center justify-center hover:opacity-90 active:scale-[0.99] transition-all shadow-lg shadow-indigo-500/25 disabled:opacity-70"
+                  >
+                    {isLoading ? (
+                      <span className="flex items-center gap-2"><Icon as={FiLoader} className="animate-spin" /> Saving...</span>
+                    ) : (
+                      <span className="flex items-center gap-2">Go to Dashboard <Icon as={FiArrowRight} /></span>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
