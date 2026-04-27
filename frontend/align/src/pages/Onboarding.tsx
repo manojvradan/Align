@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiBook, FiTarget, FiCalendar, FiArrowRight, FiBriefcase, FiCheck, FiLoader, FiChevronLeft } from 'react-icons/fi';
 import Icon from '../components/Icon'; 
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import apiClient from '../api/axiosConfig';
 import axios from 'axios';
 import { FileUpload } from "../components/ui/file-upload";
@@ -28,6 +29,7 @@ const PARSER_ENDPOINT = `${import.meta.env.VITE_RESUME_PARSER_URL || 'http://127
 
 const Onboarding: React.FC = () => {
   const { user, updateUser, fetchUserProfile } = useAuth(); // <--- Get fetchUserProfile
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(1);
