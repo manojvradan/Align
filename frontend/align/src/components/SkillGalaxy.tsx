@@ -255,7 +255,7 @@ interface Node {
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
-const SkillGalaxy: React.FC<Props> = ({ skills, dreamRole, size = 'sm', liveData }) => {
+const SkillGalaxy: React.FC<Props> = ({ skills, dreamRole = 'sm', liveData }) => {
     const [hovered, setHovered] = useState<string | null>(null);
 
     const { nodes, matchPercent, matchedCount, recommendedCount, missingSkills, dataSource, groundingUrls } = useMemo(() => {
