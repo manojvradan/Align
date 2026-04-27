@@ -54,7 +54,7 @@ const NotificationsPage: React.FC = () => {
     () => getCached<Notification[]>(NOTIFS_KEY) ?? []
   );
   const [isLoading, setIsLoading] = useState(() => getCached(NOTIFS_KEY) === null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
 
   const fetchAll = useCallback(async () => {
     if (isFresh(PREFS_KEY, TTL.LONG) && isFresh(NOTIFS_KEY, TTL.SHORT)) {
@@ -83,19 +83,20 @@ const NotificationsPage: React.FC = () => {
   }, [fetchAll]);
 
   const updatePref = async (key: keyof Pick<NotificationPrefs, 'in_app_enabled' | 'email_enabled'>, value: boolean) => {
-    if (!prefs || isSaving) return;
-    setIsSaving(true);
-    const optimistic = { ...prefs, [key]: value };
-    setPrefs(optimistic);
+    if (!prefs || savingKeys.has(key)) return;
+    // Optimistically update UI immediately
+    const previous = prefs;
+    setPrefs({ ...prefs, [key]: value });
+    setSavingKeys((s) => new Set(s).add(key));
     try {
       const res = await apiClient.put('/users/me/notification-preferences', { [key]: value });
       setPrefs(res.data);
     } catch (err) {
-      // revert on failure
-      setPrefs(prefs);
+      // Revert on failure
+      setPrefs(previous);
       console.error('Failed to update preference', err);
     } finally {
-      setIsSaving(false);
+      setSavingKeys((s) => { const next = new Set(s); next.delete(key); return next; });
     }
   };
 
@@ -147,7 +148,7 @@ const NotificationsPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-pulse">
+      <div className="max-w-4xl mx-auto w-full space-y-6 animate-pulse">
         <div className="h-8 w-48 bg-slate-200 dark:bg-white/10 rounded-lg" />
         <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 space-y-4">
           {[0, 1].map((i) => (
@@ -165,7 +166,7 @@ const NotificationsPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-4xl mx-auto w-full">
       {/* Page header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Notifications</h1>
@@ -194,7 +195,7 @@ const NotificationsPage: React.FC = () => {
           <Toggle
             checked={prefs?.in_app_enabled ?? true}
             onChange={(v) => updatePref('in_app_enabled', v)}
-            disabled={isSaving}
+            disabled={savingKeys.has('in_app_enabled')}
           />
         </div>
 
@@ -214,7 +215,7 @@ const NotificationsPage: React.FC = () => {
           <Toggle
             checked={prefs?.email_enabled ?? false}
             onChange={(v) => updatePref('email_enabled', v)}
-            disabled={isSaving}
+            disabled={savingKeys.has('email_enabled')}
           />
         </div>
       </div>
