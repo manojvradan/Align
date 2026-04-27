@@ -163,8 +163,6 @@ const JobsPage: React.FC = () => {
     };
 
     useEffect(() => {
-        let pollInterval: ReturnType<typeof setInterval> | null = null;
-
         const fetchAndMergeJobs = async () => {
             if (!user?.id) return;
 
@@ -181,12 +179,9 @@ const JobsPage: React.FC = () => {
 
             // Only show the full skeleton when there is no cached data
             if (getCached(JOBS_KEY) === null) setIsLoading(true);
-            setIsLoadingRecommendations(true);
-            setRecsComputing(false);
 
             try {
                 const generalPromise = apiClient.get('/jobs/', { timeout: 20000 });
-                const recPromise = axios.get(`${RECOMMENDATION_SERVICE_URL}/recommendations/${user.id}`, { timeout: 10000 });
                 const savedPromise = apiClient.get('/users/me/saved-jobs/ids');
                 const appliedPromise = apiClient.get('/users/me/applied-jobs/ids');
 
@@ -196,8 +191,6 @@ const JobsPage: React.FC = () => {
                     savedPromise,
                     appliedPromise,
                 ]);
-
-                let generalJobs: Job[] = [];
 
                 if (appliedResponse.status === 'fulfilled') {
                     setAppliedJobIds(new Set(appliedResponse.value.data));
@@ -209,73 +202,99 @@ const JobsPage: React.FC = () => {
                 }
 
                 if (generalResponse.status === 'fulfilled') {
-                    generalJobs = generalResponse.value.data;
-                    setCached(JOBS_KEY, generalJobs);
+                    setCached(JOBS_KEY, generalResponse.value.data);
+                    setJobs(generalResponse.value.data);
                 } else {
                     console.error('Failed to load general jobs');
                 }
 
-                // Show general jobs immediately while we wait for recs
-                setJobs(generalJobs);
                 setIsLoading(false);
                 setIsRefetching(false);
-
-                const mergeRecs = (recData: { recommendations: (Job & { match_reason?: string })[] }) => {
-                    const recommendedJobs: Job[] = (recData.recommendations || []).map((job) => ({
-                        ...job,
-                        isRecommended: true,
-                        matchReason: job.match_reason,
-                    }));
-                    const recommendedIds = new Set(recommendedJobs.map(j => j.id));
-                    setJobs([...recommendedJobs, ...generalJobs.filter(job => !recommendedIds.has(job.id))]);
-                    setIsLoadingRecommendations(false);
-                    setRecsComputing(false);
-                };
-
-                const startPolling = () => {
-                    if (pollInterval) clearInterval(pollInterval);
-                    pollInterval = setInterval(async () => {
-                        try {
-                            const res = await axios.get(
-                                `${RECOMMENDATION_SERVICE_URL}/recommendations/${user.id}`,
-                                { timeout: 10000 }
-                            );
-                            if (!res.data.computing) {
-                                clearInterval(pollInterval!);
-                                pollInterval = null;
-                                mergeRecs(res.data);
-                            }
-                            // else: still computing — keep polling
-                        } catch { /* transient error — keep polling */ }
-                    }, 3000);
-                };
-
-                try {
-                    const recResponse = await recPromise;
-                    if (recResponse.data.computing) {
-                        // Backend is computing in background — show banner and poll
-                        setRecsComputing(true);
-                        startPolling();
-                    } else {
-                        mergeRecs(recResponse.data);
-                    }
-                } catch {
-                    console.warn('Recommendation service unavailable');
-                    setIsLoadingRecommendations(false);
-                    setRecsComputing(false);
-                }
 
             } catch (error) {
                 console.error('Critical error fetching jobs', error);
                 setIsLoading(false);
+                setIsRefetching(false);
+            }
+        };
+
+        fetchAndMergeJobs();
+    }, [user?.id, refreshTrigger]);
+
+    // Fetch recommendations independently — mirrors Dashboard so the rec request
+    // is never gated by the job/saved/applied cache and always gets its full timeout.
+    useEffect(() => {
+        if (!user?.id) return;
+
+        let mounted = true;
+        let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+        const stopPolling = () => {
+            if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+        };
+
+        const mergeRecs = (recData: { recommendations: (Job & { match_reason?: string })[] }) => {
+            if (!mounted) return;
+            const recommendedJobs: Job[] = (recData.recommendations || []).map((job) => ({
+                ...job,
+                isRecommended: true,
+                matchReason: job.match_reason,
+            }));
+            const recommendedIds = new Set(recommendedJobs.map(j => j.id));
+            setJobs(prev => [...recommendedJobs, ...prev.filter(job => !recommendedIds.has(job.id))]);
+            setIsLoadingRecommendations(false);
+            setRecsComputing(false);
+        };
+
+        const startPolling = () => {
+            stopPolling();
+            pollInterval = setInterval(async () => {
+                if (!mounted) { stopPolling(); return; }
+                try {
+                    const res = await axios.get(
+                        `${RECOMMENDATION_SERVICE_URL}/recommendations/${user.id}`,
+                        { timeout: 15000 }
+                    );
+                    if (!mounted) { stopPolling(); return; }
+                    if (!res.data.computing) {
+                        stopPolling();
+                        mergeRecs(res.data);
+                    }
+                    // else: still computing — keep polling
+                } catch { /* transient error — keep polling */ }
+            }, 3000);
+        };
+
+        const fetchRecommendations = async () => {
+            if (!mounted) return;
+            setIsLoadingRecommendations(true);
+            setRecsComputing(false);
+            try {
+                const res = await axios.get(
+                    `${RECOMMENDATION_SERVICE_URL}/recommendations/${user.id}`,
+                    { timeout: 15000 }
+                );
+                if (!mounted) return;
+                if (res.data.computing) {
+                    setRecsComputing(true);
+                    startPolling();
+                } else {
+                    mergeRecs(res.data);
+                }
+            } catch (err) {
+                if (!mounted) return;
+                console.warn('Recommendation service unavailable', err);
                 setIsLoadingRecommendations(false);
                 setRecsComputing(false);
             }
         };
 
-        fetchAndMergeJobs();
-        return () => { if (pollInterval) clearInterval(pollInterval); };
-    }, [user?.id, refreshTrigger]);
+        fetchRecommendations();
+        return () => {
+            mounted = false;
+            stopPolling();
+        };
+    }, [user?.id, RECOMMENDATION_SERVICE_URL]);
 
     // Open overlay when navigated from Dashboard with a specific job ID
     useEffect(() => {
