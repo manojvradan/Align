@@ -357,7 +357,7 @@ def get_skills_for_role(
     if not result["skills"]:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Could not fetch skills. Ensure GEMINI_API_KEY is set.",
+            detail="Could not fetch skills from Gemini API. Check server logs for details (quota, model availability, or missing API key).",
         )
     return result
 

@@ -48,27 +48,29 @@ def get_skills_for_role(role: str) -> Dict[str, Any]:
             return _skills_cache[role_key]
 
     try:
-        import google.generativeai as genai
+        from google import genai
+        from google.genai import types
 
-        genai.configure(api_key=api_key)
-
-        # Build the model with Google Search Retrieval grounding enabled
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            tools=[{"google_search_retrieval": {}}],
-        )
+        client = genai.Client(api_key=api_key)
 
         prompt = (
             f'You are an expert technical recruiter. '
-            f'Using current job market data from the web, list the 12-15 most '
+            f'Using current job market data from the web, list under 10 most'
             f'important skills (technical tools, frameworks, certifications, '
-            f'and methodologies) that appear in real job postings for the role: '
+            f'and methodologies) that appear in real internship job postings for the role: '
             f'"{role}". '
+            f'Focus specifically on entry-level internship positions, not full-time or senior roles. '
             f'Respond ONLY with a JSON object in this exact format, no other text:\n'
             f'{{"skills": ["skill1", "skill2", "skill3"]}}'
         )
 
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+            ),
+        )
 
         # --- Parse skills from response text ---
         raw = response.text.strip()
@@ -106,7 +108,7 @@ def get_skills_for_role(role: str) -> Dict[str, Any]:
 
         result = {
             "skills": skills,
-            "source": "Google Search (grounded by Gemini 1.5 Flash)",
+            "source": "Google Search (grounded by Gemini 2.5 Flash)",
             "grounding_urls": grounding_urls,
         }
 
@@ -118,7 +120,7 @@ def get_skills_for_role(role: str) -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        print(f"[Gemini] Error fetching skills for role '{role}': {e}")
+        print(f"[Gemini] Error fetching skills for role '{role}': {type(e).__name__}: {e}")
         return empty
 
 

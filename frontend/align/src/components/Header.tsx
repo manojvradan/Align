@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { FiBell, FiSun, FiMoon, FiCheck, FiSettings } from 'react-icons/fi';
+import { FiBell, FiSun, FiMoon, FiCheck, FiSettings, FiMenu } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import Icon from './Icon';
 import { useAuth } from '../context/AuthContext';
@@ -14,7 +14,11 @@ interface Notification {
   created_at: string;
 }
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onMenuOpen?: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onMenuOpen }) => {
   const { user } = useAuth();
   const firstName = user?.full_name?.split(' ')[0];
   const { isDark, toggleTheme } = useTheme();
@@ -88,8 +92,16 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="relative z-[100] bg-white/80 dark:bg-[#0d0d1a]/80 backdrop-blur-sm border-b border-slate-200 dark:border-white/10 px-6 py-4 flex justify-end items-center w-full transition-colors duration-300 overflow-visible">
-      <div className="flex items-center gap-3">
+    <header className="relative z-[100] bg-white/80 dark:bg-[#0d0d1a]/80 backdrop-blur-sm border-b border-slate-200 dark:border-white/10 px-4 sm:px-6 py-4 flex justify-between items-center w-full transition-colors duration-300 overflow-visible">
+      {/* Hamburger — mobile only */}
+      <button
+        onClick={onMenuOpen}
+        aria-label="Open menu"
+        className="lg:hidden p-2 rounded-lg text-slate-500 dark:text-white/50 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-800 dark:hover:text-white transition-all"
+      >
+        <Icon as={FiMenu} className="text-lg" />
+      </button>
+      <div className="flex items-center gap-3 ml-auto">
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}

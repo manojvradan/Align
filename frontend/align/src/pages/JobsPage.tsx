@@ -202,8 +202,15 @@ const JobsPage: React.FC = () => {
                 }
 
                 if (generalResponse.status === 'fulfilled') {
-                    setCached(JOBS_KEY, generalResponse.value.data);
-                    setJobs(generalResponse.value.data);
+                    const generalJobs: Job[] = generalResponse.value.data;
+                    setCached(JOBS_KEY, generalJobs);
+                    // Preserve any recommendations already merged in by the rec effect
+                    setJobs(prev => {
+                        const existingRecs = prev.filter(j => j.isRecommended);
+                        if (existingRecs.length === 0) return generalJobs;
+                        const recIds = new Set(existingRecs.map(j => j.id));
+                        return [...existingRecs, ...generalJobs.filter(j => !recIds.has(j.id))];
+                    });
                 } else {
                     console.error('Failed to load general jobs');
                 }
@@ -405,7 +412,7 @@ const JobsPage: React.FC = () => {
                 />
                 <div className="flex gap-3">
                     <select
-                        className="px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="px-4 py-2.5 text-sm bg-white dark:bg-[#0d0d1a] border border-slate-200 dark:border-white/10 rounded-xl text-slate-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:[color-scheme:dark]"
                         value={selectedLocation}
                         onChange={(e) => setSelectedLocation(e.target.value)}
                     >
@@ -415,7 +422,7 @@ const JobsPage: React.FC = () => {
                             ))}
                         </select>
                     <select
-                        className="px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="px-4 py-2.5 text-sm bg-white dark:bg-[#0d0d1a] border border-slate-200 dark:border-white/10 rounded-xl text-slate-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:[color-scheme:dark]"
                         value={sortOrder}
                         onChange={(e) => setSortOrder(e.target.value)}
                     >

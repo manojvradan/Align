@@ -1,13 +1,34 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FiGrid, FiFileText, FiLogOut, FiBriefcase, FiBell, FiZap } from 'react-icons/fi';
+import { FiGrid, FiFileText, FiLogOut, FiBriefcase, FiBell, FiZap, FiX } from 'react-icons/fi';
 import Icon from './Icon';
 import { useAuth } from '../context/AuthContext';
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
   const { logout } = useAuth();
+
+  // Close drawer on route change (mobile)
+  useEffect(() => {
+    if (onClose) onClose();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  // Lock body scroll when drawer is open on mobile
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
 
   const handleLogout = async () => {
     try {
@@ -25,15 +46,25 @@ const Sidebar: React.FC = () => {
     { to: '/notifications', icon: FiBell, text: 'Notifications' },
   ];
 
-  return (
-    <aside className="bg-white dark:bg-[#0d0d1a] border-r border-slate-200 dark:border-white/10 w-64 flex-col justify-between p-6 hidden lg:flex transition-colors duration-300">
+  const sidebarContent = (
+    <aside className="bg-white dark:bg-[#0d0d1a] border-r border-slate-200 dark:border-white/10 w-64 flex flex-col justify-between p-6 h-full transition-colors duration-300">
       <div>
-        {/* Logo */}
-        <div className="flex items-center gap-3 mb-10">
-          <div className="bg-gradient-to-br from-indigo-500 to-violet-600 w-10 h-10 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <span className="text-white font-bold text-xl">A</span>
+        {/* Logo row with close button on mobile */}
+        <div className="flex items-center justify-between mb-10">
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-indigo-500 to-violet-600 w-10 h-10 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <span className="text-white font-bold text-xl">A</span>
+            </div>
+            <span className="text-xl font-bold text-slate-800 dark:text-white tracking-tight">Align</span>
           </div>
-          <span className="text-xl font-bold text-slate-800 dark:text-white tracking-tight">Align</span>
+          {/* Close button — only visible in mobile drawer */}
+          <button
+            onClick={onClose}
+            aria-label="Close menu"
+            className="lg:hidden p-1.5 rounded-lg text-slate-400 dark:text-white/40 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+          >
+            <Icon as={FiX} className="text-lg" />
+          </button>
         </div>
 
         <p className="text-xs font-semibold text-slate-400 dark:text-white/30 uppercase tracking-widest mb-3 px-3">
@@ -69,6 +100,26 @@ const Sidebar: React.FC = () => {
         Log out
       </button>
     </aside>
+  );
+
+  return (
+    <>
+      {/* Desktop: static sidebar */}
+      <div className="hidden lg:flex h-full">{sidebarContent}</div>
+
+      {/* Mobile: slide-in drawer */}
+      <div className={`lg:hidden fixed inset-0 z-[300] flex transition-all duration-300 ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+        {/* Backdrop */}
+        <div
+          className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
+          onClick={onClose}
+        />
+        {/* Drawer panel */}
+        <div className={`relative h-full transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          {sidebarContent}
+        </div>
+      </div>
+    </>
   );
 };
 
