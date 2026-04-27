@@ -224,42 +224,56 @@ const Onboarding: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-900 flex flex-col justify-center items-center p-6 transition-colors">
       <div className="max-w-xl w-full">
         
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-800 mb-3">
-            {step === 1 ? "Let's personalize your feed" : "Add your Resume"}
-          </h1>
-          <p className="text-slate-500 text-lg">
-            {step === 1 
-              ? "Tell us about your studies and what kind of internship you are looking for."
-              : "Upload your resume so our AI can extract your skills and match you to jobs."}
-          </p>
+        <div className="flex items-start justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-3">
+              {step === 1 ? "Let's personalize your feed" : "Add your Resume"}
+            </h1>
+            <p className="text-slate-500 dark:text-gray-400 text-lg">
+              {step === 1 
+                ? "Tell us about your studies and what kind of internship you are looking for."
+                : "Upload your resume so our AI can extract your skills and match you to jobs."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label="Toggle dark mode"
+            className="p-2 rounded-lg text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0 mt-1 ml-4"
+          >
+            {isDark ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
+            )}
+          </button>
         </div>
 
-        <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm relative transition-all duration-300">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-slate-200 dark:border-gray-700 shadow-sm relative transition-all duration-300">
           
           {/* Decorative Blob */}
-          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-slate-50 rounded-full z-0 opacity-50 pointer-events-none"></div>
+          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-slate-50 dark:bg-gray-700 rounded-full z-0 opacity-50 pointer-events-none"></div>
 
           {/* --- STEP 1: PROFILE FORM --- */}
           {step === 1 && (
             <form onSubmit={handleNextStep} className="space-y-6 relative z-10 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="grid grid-cols-1 gap-6">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">University / College</label>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-gray-300 mb-2">University / College</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Icon as={FiBook} className="text-slate-400" />
+                      <Icon as={FiBook} className="text-slate-400 dark:text-gray-500" />
                     </div>
                     <input
                       type="text"
                       name="university"
                       required
                       placeholder="e.g. Stanford University"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all text-slate-800"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-slate-800 dark:focus:ring-indigo-500 focus:border-slate-800 dark:focus:border-indigo-500 outline-none transition-all text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-gray-500"
                       value={formData.university}
                       onChange={handleChange}
                     />
@@ -267,17 +281,17 @@ const Onboarding: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Major / Field of Study</label>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-gray-300 mb-2">Major / Field of Study</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Icon as={FiTarget} className="text-slate-400" />
+                      <Icon as={FiTarget} className="text-slate-400 dark:text-gray-500" />
                     </div>
                     <input
                       type="text"
                       name="major"
                       required
                       placeholder="e.g. Computer Science"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all text-slate-800"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-slate-800 dark:focus:ring-indigo-500 focus:border-slate-800 dark:focus:border-indigo-500 outline-none transition-all text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-gray-500"
                       value={formData.major}
                       onChange={handleChange}
                     />
@@ -287,10 +301,10 @@ const Onboarding: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Graduation Year</label>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-gray-300 mb-2">Graduation Year</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Icon as={FiCalendar} className="text-slate-400" />
+                      <Icon as={FiCalendar} className="text-slate-400 dark:text-gray-500" />
                     </div>
                     <input
                       type="number"
@@ -298,7 +312,7 @@ const Onboarding: React.FC = () => {
                       required
                       min={new Date().getFullYear()}
                       max={new Date().getFullYear() + 6}
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all text-slate-800"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-slate-800 dark:focus:ring-indigo-500 focus:border-slate-800 dark:focus:border-indigo-500 outline-none transition-all text-slate-800 dark:text-white"
                       value={formData.graduation_year}
                       onChange={handleChange}
                     />
@@ -306,10 +320,10 @@ const Onboarding: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Preferred Internship Role</label>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-gray-300 mb-2">Preferred Internship Role</label>
                   <div className="relative" ref={roleDropdownRef}>
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Icon as={FiBriefcase} className="text-slate-400" />
+                      <Icon as={FiBriefcase} className="text-slate-400 dark:text-gray-500" />
                     </div>
                     <input
                       type="text"
@@ -317,22 +331,22 @@ const Onboarding: React.FC = () => {
                       required
                       autoComplete="off"
                       placeholder="e.g. Financial Analyst"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all text-slate-800"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-slate-800 dark:focus:ring-indigo-500 focus:border-slate-800 dark:focus:border-indigo-500 outline-none transition-all text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-gray-500"
                       value={formData.preferred_job_role}
                       onChange={handleChange}
                       onFocus={() => setRoleDropdownOpen(true)}
                     />
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="h-5 w-5 text-slate-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </div>
                     {roleDropdownOpen && filteredRoles.length > 0 && formData.preferred_job_role.length > 0 && (
-                      <ul className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      <ul className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                         {filteredRoles.map(role => (
                           <li
                             key={role}
-                            className="px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
+                            className="px-4 py-2.5 text-sm text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
                             onMouseDown={() => {
                               setFormData(prev => ({ ...prev, preferred_job_role: role }));
                               setRoleDropdownOpen(false);
@@ -350,7 +364,7 @@ const Onboarding: React.FC = () => {
               <div className="pt-4">
                 <button
                   type="submit"
-                  className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold text-lg flex items-center justify-center hover:bg-slate-700 active:scale-[0.99] transition-all shadow-lg shadow-slate-200"
+                  className="w-full bg-slate-800 dark:bg-indigo-600 text-white py-3.5 rounded-xl font-bold text-lg flex items-center justify-center hover:bg-slate-700 dark:hover:bg-indigo-700 active:scale-[0.99] transition-all shadow-lg shadow-slate-200 dark:shadow-none"
                 >
                   Next Step <Icon as={FiArrowRight} className="ml-2" />
                 </button>
@@ -365,7 +379,7 @@ const Onboarding: React.FC = () => {
               {/* Back Button */}
               <button 
                 onClick={() => setStep(1)}
-                className="text-sm text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-2"
+                className="text-sm text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-1 mb-2"
               >
                 <Icon as={FiChevronLeft} /> Back to details
               </button>
@@ -377,8 +391,8 @@ const Onboarding: React.FC = () => {
 
               {/* Parsing Loading State */}
               {isParsing && (
-                <div className="flex flex-col items-center justify-center bg-indigo-50 p-5 rounded-lg gap-2">
-                  <div className="flex items-center text-indigo-600 gap-2">
+                <div className="flex flex-col items-center justify-center bg-indigo-50 dark:bg-indigo-900/30 p-5 rounded-lg gap-2">
+                  <div className="flex items-center text-indigo-600 dark:text-indigo-400 gap-2">
                     <Icon as={FiLoader} className="animate-spin shrink-0" />
                     <span className="text-sm font-medium transition-all duration-500">
                       {PARSE_STEPS[parseStepIndex]}
@@ -389,7 +403,7 @@ const Onboarding: React.FC = () => {
                       <div
                         key={i}
                         className={`h-1 rounded-full transition-all duration-500 ${
-                          i === parseStepIndex ? 'w-4 bg-indigo-500' : 'w-1.5 bg-indigo-200'
+                          i === parseStepIndex ? 'w-4 bg-indigo-500' : 'w-1.5 bg-indigo-200 dark:bg-indigo-800'
                         }`}
                       />
                     ))}
@@ -399,28 +413,28 @@ const Onboarding: React.FC = () => {
 
               {/* Error State */}
               {parseError && (
-                <div className="text-red-600 bg-red-50 p-3 rounded-lg text-sm text-center">
+                <div className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 p-3 rounded-lg text-sm text-center">
                   {parseError}
                 </div>
               )}
 
               {/* Extracted + AI-Inferred Skills Preview */}
               {!isParsing && extractedSkills.length > 0 && (
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-3">
+                <div className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg border border-slate-100 dark:border-gray-600 space-y-3">
                   {/* Parsed skills */}
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <p className="text-sm font-bold text-slate-700">We found {extractedSkills.length} skills:</p>
+                      <p className="text-sm font-bold text-slate-700 dark:text-gray-300">We found {extractedSkills.length} skills:</p>
                       <Icon as={FiCheck} className="text-green-500" />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {extractedSkills.map((skill, i) => (
-                        <span key={i} className="flex items-center gap-1 bg-white border border-slate-200 px-2 py-1 rounded text-xs text-slate-600">
+                        <span key={i} className="flex items-center gap-1 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-500 px-2 py-1 rounded text-xs text-slate-600 dark:text-gray-300">
                           {skill}
                           {!isEnriching && !enrichmentComplete && (
                             <button
                               onClick={() => handleDeleteExtractedSkill(i)}
-                              className="text-slate-300 hover:text-red-400 transition-colors leading-none"
+                              className="text-slate-300 dark:text-gray-500 hover:text-red-400 transition-colors leading-none"
                               title="Remove skill"
                             >×</button>
                           )}
@@ -431,12 +445,12 @@ const Onboarding: React.FC = () => {
 
                   {/* AI-inferred skills */}
                   {inferredSkills.length > 0 && (
-                    <div className="border-t border-slate-200 pt-3">
+                    <div className="border-t border-slate-200 dark:border-gray-600 pt-3">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">✦ AI</span>
-                        <p className="text-sm font-bold text-slate-700">AI enriched {inferredSkills.length} more skills:</p>
+                        <p className="text-sm font-bold text-slate-700 dark:text-gray-300">AI enriched {inferredSkills.length} more skills:</p>
                         <div className="relative group ml-auto shrink-0">
-                          <div className="w-4 h-4 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] font-bold cursor-default select-none">?</div>
+                          <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-gray-600 text-slate-500 dark:text-gray-400 flex items-center justify-center text-[10px] font-bold cursor-default select-none">?</div>
                           <div className="absolute right-0 bottom-6 w-64 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20 leading-relaxed">
                             We're making connections to add skills you might have missed word-for-word in your resume — things implied by your experience that a recruiter would expect you to know.
                             <div className="absolute right-2 -bottom-1.5 w-3 h-3 bg-slate-800 rotate-45" />
@@ -447,7 +461,7 @@ const Onboarding: React.FC = () => {
                         {inferredSkills.map((skill, i) => (
                           <span
                             key={i}
-                            className="flex items-center gap-1 bg-white border border-indigo-400 ring-1 ring-indigo-300 shadow-sm shadow-indigo-100 px-2 py-1 rounded text-xs text-indigo-700 font-medium"
+                            className="flex items-center gap-1 bg-white dark:bg-gray-700 border border-indigo-400 ring-1 ring-indigo-300 dark:ring-indigo-500/50 shadow-sm shadow-indigo-100 dark:shadow-none px-2 py-1 rounded text-xs text-indigo-700 dark:text-indigo-300 font-medium"
                           >
                             {skill}
                             <button
@@ -465,7 +479,7 @@ const Onboarding: React.FC = () => {
 
               {/* Enrichment Animation */}
               {isEnriching && (
-                <div className="bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 rounded-xl p-6 flex flex-col items-center gap-4">
+                <div className="bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/30 dark:to-violet-900/30 border border-indigo-100 dark:border-indigo-700/50 rounded-xl p-6 flex flex-col items-center gap-4">
                   <div className="relative w-16 h-16">
                     <div className="absolute inset-0 rounded-full border-2 border-indigo-200 animate-ping opacity-40" />
                     <div className="absolute inset-0 rounded-full border-2 border-indigo-300 animate-spin" style={{ animationDuration: '3s' }} />
@@ -475,15 +489,15 @@ const Onboarding: React.FC = () => {
                     </div>
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-semibold text-indigo-700">{ENRICH_STEPS[enrichStepIndex]}</p>
-                    <p className="text-xs text-indigo-400 mt-1 animate-pulse">Our AI is working its magic</p>
+                    <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">{ENRICH_STEPS[enrichStepIndex]}</p>
+                    <p className="text-xs text-indigo-400 dark:text-indigo-500 mt-1 animate-pulse">Our AI is working its magic</p>
                   </div>
                   <div className="flex gap-1">
                     {ENRICH_STEPS.map((_, i) => (
                       <div
                         key={i}
                         className={`h-1 rounded-full transition-all duration-500 ${
-                          i === enrichStepIndex ? 'w-4 bg-indigo-500' : 'w-1.5 bg-indigo-200'
+                          i === enrichStepIndex ? 'w-4 bg-indigo-500' : 'w-1.5 bg-indigo-200 dark:bg-indigo-800'
                         }`}
                       />
                     ))}
@@ -496,11 +510,11 @@ const Onboarding: React.FC = () => {
                 <div className="pt-4">
                   <button
                     disabled
-                    className="w-full bg-slate-100 text-slate-400 border border-slate-200 py-3.5 rounded-xl font-bold text-lg flex items-center justify-center cursor-not-allowed"
+                    className="w-full bg-slate-100 dark:bg-gray-700 text-slate-400 dark:text-gray-500 border border-slate-200 dark:border-gray-600 py-3.5 rounded-xl font-bold text-lg flex items-center justify-center cursor-not-allowed"
                   >
                     Extract my skills
                   </button>
-                  <p className="text-center text-xs text-slate-400 mt-2">Upload your resume above to get started</p>
+                  <p className="text-center text-xs text-slate-400 dark:text-gray-500 mt-2">Upload your resume above to get started</p>
                 </div>
               )}
 
@@ -527,7 +541,7 @@ const Onboarding: React.FC = () => {
               {enrichmentComplete && (
                 <div className="pt-2 space-y-3">
                   {extractedSkills.length > 0 && (
-                    <p className="text-center text-xs text-slate-400">Remove any skills that don't apply, then head to your dashboard.</p>
+                    <p className="text-center text-xs text-slate-400 dark:text-gray-500">Remove any skills that don't apply, then head to your dashboard.</p>
                   )}
                   <button
                     onClick={handleGoToDashboard}
@@ -549,8 +563,8 @@ const Onboarding: React.FC = () => {
         
         {/* Step Indicator */}
         <div className="flex justify-center gap-2 mt-6">
-          <div className={`h-2 w-2 rounded-full transition-all ${step === 1 ? 'bg-slate-800 w-8' : 'bg-slate-300'}`}></div>
-          <div className={`h-2 w-2 rounded-full transition-all ${step === 2 ? 'bg-slate-800 w-8' : 'bg-slate-300'}`}></div>
+          <div className={`h-2 w-2 rounded-full transition-all ${step === 1 ? 'bg-slate-800 dark:bg-indigo-500 w-8' : 'bg-slate-300 dark:bg-gray-600'}`}></div>
+          <div className={`h-2 w-2 rounded-full transition-all ${step === 2 ? 'bg-slate-800 dark:bg-indigo-500 w-8' : 'bg-slate-300 dark:bg-gray-600'}`}></div>
         </div>
 
       </div>
