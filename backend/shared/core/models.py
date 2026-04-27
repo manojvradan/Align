@@ -69,6 +69,7 @@ class Student(Base):
     preferred_job_role = Column(String, nullable=True)
     search_keywords = Column(Text, nullable=True)
     resume_text = Column(Text, nullable=True)
+    resume_s3_url = Column(Text, nullable=True)
     profile_picture_url = Column(Text, nullable=True)
 
     skills = relationship(

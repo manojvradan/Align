@@ -269,11 +269,9 @@ def generate_cover_letter(
 
     skill_str = ", ".join(skills) if skills else "Not specified"
 
-    # Truncate resume text to avoid hitting token limits (~6000 chars ≈ 1500 tokens)
     resume_section = ""
     if resume_text:
-        truncated = resume_text[:6000]
-        resume_section = f"\n\n**Full Resume Text (use this as the source of truth):**\n{truncated}"
+        resume_section = f"\n\n**Full Resume Text (use this as the source of truth):**\n{resume_text}"
 
     prompt = f"""
     You are an expert career advisor writing a professional cover letter

@@ -539,7 +539,7 @@ const JobsPage: React.FC = () => {
 
             {/* Cover Letter Modal */}
             {coverLetterJob && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center">
+                <div className="fixed inset-0 z-[300] flex items-center justify-center">
                     <div
                         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                         onClick={() => { setCoverLetterJob(null); setCoverLetterText(''); }}

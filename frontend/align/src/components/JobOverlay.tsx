@@ -86,15 +86,22 @@ const JobOverlay: React.FC<JobOverlayProps> = ({
           </button>
         </div>
 
-        {/* Action Button */}
-        <div className="flex-none px-8 py-6 border-b border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-white/5">
+        {/* Action Buttons */}
+        <div className="flex-none px-8 py-6 border-b border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-white/5 flex gap-3">
           <button
             onClick={() => onGenerateCoverLetter(job)}
             disabled={isGeneratingCoverLetter}
-            className={`w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white px-4 py-3 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg ${isGeneratingCoverLetter ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white px-4 py-3 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg ${isGeneratingCoverLetter ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <Icon as={FiPenTool} />
             {isGeneratingCoverLetter ? 'Generating...' : 'Write Cover Letter'}
+          </button>
+          <button
+            onClick={() => onViewOriginal(job)}
+            className="flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-200 dark:border-white/10 text-indigo-600 dark:text-indigo-400 font-semibold hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+          >
+            <Icon as={FiExternalLink} />
+            View Posting
           </button>
         </div>
 
@@ -128,14 +135,7 @@ const JobOverlay: React.FC<JobOverlayProps> = ({
                 dangerouslySetInnerHTML={{ __html: safeDescription }}
             />
 
-            <div className="mt-8 pt-8 border-t border-gray-100 dark:border-white/10 mb-8">
-                <button 
-                  onClick={() => onViewOriginal(job)}
-                  className="inline-flex items-center text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
-                >
-                  View Original Posting <Icon as={FiExternalLink} className="ml-2"/>
-                </button>
-            </div>
+
         </motion.div>
       </motion.div>
     </div>

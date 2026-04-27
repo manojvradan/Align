@@ -98,6 +98,7 @@ class StudentUpdate(BaseModel):
     graduation_year: Optional[int] = None
     preferred_job_role: Optional[str] = None
     resume_text: Optional[str] = None
+    resume_s3_url: Optional[str] = None
 
 
 # Properties to return to client

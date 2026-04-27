@@ -8,6 +8,8 @@ import apiClient from '../api/axiosConfig';
 const ResumeParser: React.FC = () => {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [extractedSkills, setExtractedSkills] = useState<string[]>([]);
+    const [resumeRawText, setResumeRawText] = useState<string>('');
+    const [resumeS3Url, setResumeS3Url] = useState<string>('');
     const [isParsing, setIsParsing] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -22,6 +24,8 @@ const ResumeParser: React.FC = () => {
         if (files.length > 0) {
             setSelectedFile(files[0]);
             setExtractedSkills([]); // Reset previous results
+            setResumeRawText('');
+            setResumeS3Url('');
             setErrorMessage(null); // Clear previous errors
         } else {
             // If the user removes the file from the UI, clear the state
@@ -72,6 +76,8 @@ const ResumeParser: React.FC = () => {
                 throw new Error(data.detail || 'An unknown error occurred during parsing.');
             }
             setExtractedSkills(data.extracted_skills);
+            setResumeRawText(data.raw_text || '');
+            setResumeS3Url(data.s3_url || '');
 
         } catch (error: any) {
             console.error("Parsing failed:", error);
@@ -88,17 +94,25 @@ const ResumeParser: React.FC = () => {
         setMessage(null);
 
         try {
-            // Format data for the User API schema: [{ name: "Python" }, { name: "Java" }]
+            // Save skills to profile
             const skillsPayload = extractedSkills.map(skill => ({ name: skill }));
-
-            // Use apiClient (axios) which likely has your Base URL (port 8000) and Interceptors setup
             await apiClient.post('/users/me/skills/', skillsPayload);
+
+            // Save full resume text and S3 URL so cover letter generation has full context
+            if (resumeRawText || resumeS3Url) {
+                await apiClient.put('/users/me', {
+                    resume_text: resumeRawText || null,
+                    resume_s3_url: resumeS3Url || null,
+                });
+            }
 
             setMessage({ type: 'success', text: "Skills successfully added to your profile!" });
             
-            // Optional: Clear list after saving to prevent double submission
+            // Clear list after saving to prevent double submission
             setExtractedSkills([]);
             setSelectedFile(null);
+            setResumeRawText('');
+            setResumeS3Url('');
 
         } catch (error: any) {
             console.error("Save failed:", error);

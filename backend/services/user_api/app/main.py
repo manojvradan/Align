@@ -27,6 +27,15 @@ else:
 # For production, you would use a migration tool like Alembic.
 models.Base.metadata.create_all(bind=engine)
 
+# Run lightweight additive migrations for new columns on existing tables.
+with engine.connect() as _conn:
+    _conn.execute(
+        __import__("sqlalchemy").text(
+            "ALTER TABLE students ADD COLUMN IF NOT EXISTS resume_s3_url TEXT;"
+        )
+    )
+    _conn.commit()
+
 app = FastAPI(
     title="AI Internship Recommendation - User API",
     description="Handles user profiles, authentication, and interactions."
@@ -444,7 +453,47 @@ def generate_cover_letter_for_job(
     student = crud.get_student(db, student_id=current_user.id)
     skill_names = [s.name for s in student.skills] if student.skills else []
 
-    # 3. Call LLM service
+    # 3. Resolve full resume text — prefer DB, fall back to S3 fetch
+    resume_text = student.resume_text or ""
+    if not resume_text and getattr(student, "resume_s3_url", None):
+        try:
+            import boto3
+            from urllib.parse import urlparse
+
+            s3_url = student.resume_s3_url
+            parsed = urlparse(s3_url)
+            # URL format: https://{bucket}.s3.{region}.amazonaws.com/{key}
+            bucket = parsed.netloc.split(".")[0]
+            key = parsed.path.lstrip("/")
+
+            s3 = boto3.client(
+                "s3",
+                aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+                aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+                region_name=os.getenv("AWS_REGION", "ap-southeast-2"),
+            )
+            obj = s3.get_object(Bucket=bucket, Key=key)
+            raw_bytes = obj["Body"].read()
+
+            content_type = obj.get("ContentType", "")
+            if "pdf" in content_type or key.endswith(".pdf"):
+                import io
+                import pdfminer.high_level
+                resume_text = pdfminer.high_level.extract_text(io.BytesIO(raw_bytes))
+            else:
+                import io
+                import docx
+                doc = docx.Document(io.BytesIO(raw_bytes))
+                resume_text = "\n".join(p.text for p in doc.paragraphs)
+
+            # Persist back to DB so next request is instant
+            student.resume_text = resume_text
+            db.commit()
+            print(f"[CoverLetter] Fetched resume from S3 for student {student.id} ({len(resume_text)} chars)")
+        except Exception as e:
+            print(f"[CoverLetter] Could not fetch resume from S3: {e}")
+
+    # 4. Call LLM service
     cover_letter_text = llm_service.generate_cover_letter(
         student_name=student.full_name or "Applicant",
         student_summary=student.summary or "",
@@ -452,7 +501,7 @@ def generate_cover_letter_for_job(
         job_title=internship.title,
         company=internship.company or "the company",
         job_description=internship.description or "",
-        resume_text=student.resume_text or ""
+        resume_text=resume_text,
     )
 
     if not cover_letter_text:
