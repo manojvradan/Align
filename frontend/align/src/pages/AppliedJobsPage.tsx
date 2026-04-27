@@ -7,6 +7,10 @@ import JobCard from '../components/JobCard';
 import JobOverlay from '../components/JobOverlay';
 import apiClient from '../api/axiosConfig';
 import { useAuth } from '../context/AuthContext';
+import { getCached, isFresh, setCached, TTL } from '../api/cache';
+
+const APPLIED_KEY = '/users/me/applied-jobs';
+const SAVED_IDS_KEY = '/users/me/saved-jobs/ids';
 
 interface Job {
   id: number;
@@ -22,33 +26,37 @@ const AppliedJobsPage: React.FC = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     
-    // State
-    const [jobs, setJobs] = useState<Job[]>([]);
-    const [savedJobIds, setSavedJobIds] = useState<Set<number>>(new Set());
-    const [isLoading, setIsLoading] = useState(true);
+    // State — initialised from cache so revisits skip the skeleton
+    const [jobs, setJobs] = useState<Job[]>(() => getCached<Job[]>(APPLIED_KEY) ?? []);
+    const [savedJobIds, setSavedJobIds] = useState<Set<number>>(
+        () => new Set(getCached<number[]>(SAVED_IDS_KEY) ?? [])
+    );
+    const [isLoading, setIsLoading] = useState(() => getCached(APPLIED_KEY) === null);
     const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
     // Fetch Data
     useEffect(() => {
         const fetchData = async () => {
             if (!user?.id) return;
-            setIsLoading(true);
+
+            if (isFresh(APPLIED_KEY, TTL.MEDIUM) && isFresh(SAVED_IDS_KEY, TTL.MEDIUM)) {
+                setIsLoading(false);
+                return;
+            }
+
+            if (getCached(APPLIED_KEY) === null) setIsLoading(true);
 
             try {
-                // We fetch two things in parallel:
-                // 1. The list of jobs I have applied to (Full Objects)
-                // 2. The list of IDs I have saved (so the bookmark icon works)
                 const [appliedResponse, savedResponse] = await Promise.all([
-                    apiClient.get('/users/me/applied-jobs'),
-                    apiClient.get('/users/me/saved-jobs/ids')
+                    apiClient.get(APPLIED_KEY),
+                    apiClient.get(SAVED_IDS_KEY),
                 ]);
 
-                setJobs(appliedResponse.data);
-                
-                // Ensure we handle the response format correctly for saved IDs
-                const ids = savedResponse.data || [];
-                setSavedJobIds(new Set(ids));
+                setCached(APPLIED_KEY, appliedResponse.data);
+                setCached(SAVED_IDS_KEY, savedResponse.data ?? []);
 
+                setJobs(appliedResponse.data);
+                setSavedJobIds(new Set(savedResponse.data ?? []));
             } catch (error) {
                 console.error("Error fetching applied jobs:", error);
             } finally {

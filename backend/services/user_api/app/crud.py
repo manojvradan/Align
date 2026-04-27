@@ -342,3 +342,124 @@ def update_student(db: Session, student_id: int, student_update: schemas.Student
     db.commit()
     db.refresh(db_student)
     return db_student
+
+
+# --- CRUD for Notification Preferences ---
+
+def get_or_create_notification_preference(db: Session, student_id: int):
+    pref = db.query(models.NotificationPreference).filter(
+        models.NotificationPreference.student_id == student_id
+    ).first()
+    if not pref:
+        pref = models.NotificationPreference(student_id=student_id)
+        db.add(pref)
+        db.commit()
+        db.refresh(pref)
+    return pref
+
+
+def update_notification_preference(
+        db: Session,
+        student_id: int,
+        update: schemas.NotificationPreferenceUpdate
+        ):
+    pref = get_or_create_notification_preference(db, student_id)
+    if update.in_app_enabled is not None:
+        pref.in_app_enabled = update.in_app_enabled
+    if update.email_enabled is not None:
+        pref.email_enabled = update.email_enabled
+    db.commit()
+    db.refresh(pref)
+    return pref
+
+
+# --- CRUD for Notifications ---
+
+def get_notifications(db: Session, student_id: int):
+    return (
+        db.query(models.Notification)
+        .filter(models.Notification.student_id == student_id)
+        .order_by(models.Notification.created_at.desc())
+        .limit(50)
+        .all()
+    )
+
+
+def get_unread_notification_count(db: Session, student_id: int) -> int:
+    return (
+        db.query(models.Notification)
+        .filter(
+            models.Notification.student_id == student_id,
+            models.Notification.is_read == False
+        )
+        .count()
+    )
+
+
+def create_notification(
+        db: Session,
+        student_id: int,
+        title: str,
+        message: str,
+        internship_id: int = None
+        ):
+    notif = models.Notification(
+        student_id=student_id,
+        internship_id=internship_id,
+        title=title,
+        message=message,
+    )
+    db.add(notif)
+    db.commit()
+    db.refresh(notif)
+    return notif
+
+
+def notification_exists_for_internship(db: Session, student_id: int, internship_id: int) -> bool:
+    return (
+        db.query(models.Notification)
+        .filter(
+            models.Notification.student_id == student_id,
+            models.Notification.internship_id == internship_id
+        )
+        .first()
+    ) is not None
+
+
+def mark_notification_read(db: Session, notification_id: int, student_id: int):
+    notif = (
+        db.query(models.Notification)
+        .filter(
+            models.Notification.id == notification_id,
+            models.Notification.student_id == student_id
+        )
+        .first()
+    )
+    if notif:
+        notif.is_read = True
+        db.commit()
+        db.refresh(notif)
+    return notif
+
+
+def mark_all_notifications_read(db: Session, student_id: int):
+    db.query(models.Notification).filter(
+        models.Notification.student_id == student_id,
+        models.Notification.is_read == False
+    ).update({"is_read": True})
+    db.commit()
+
+
+def delete_notification(db: Session, notification_id: int, student_id: int):
+    notif = (
+        db.query(models.Notification)
+        .filter(
+            models.Notification.id == notification_id,
+            models.Notification.student_id == student_id
+        )
+        .first()
+    )
+    if notif:
+        db.delete(notif)
+        db.commit()
+    return notif

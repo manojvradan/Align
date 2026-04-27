@@ -11,8 +11,10 @@ import ConfirmRegistrationPage from './pages/ConfirmRegistrationPage';
 import JobsPage from './pages/JobsPage';
 import Onboarding from './pages/Onboarding';
 import EditProfilePage from './pages/EditProfilePage';
+import SkillsPage from './pages/SkillsPage';
 import AppliedJobsPage from './pages/AppliedJobsPage';
 import SavedJobsPage from './pages/SavedJobsPage';
+import NotificationsPage from './pages/NotificationsPage';
 
 // Import Components and Context
 import DashboardLayout from './components/DashboardLayout';
@@ -45,9 +47,11 @@ const App: React.FC = () => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/resume-parser" element={<ResumeParser />} />
               <Route path="/jobs" element={<JobsPage />} />
-              <Route path="/profile" element={<EditProfilePage />} /> 
+              <Route path="/profile" element={<EditProfilePage />} />
+              <Route path="/skills" element={<SkillsPage />} />
               <Route path="/applied" element={<AppliedJobsPage />} />
               <Route path="/saved" element={<SavedJobsPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
             </Route>
           </Route>
         </Route>

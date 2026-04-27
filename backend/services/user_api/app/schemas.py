@@ -113,6 +113,7 @@ class Student(StudentBase):
     courses: List[Course] = []
     applications: List[InternshipApplication] = []
     preferred_job_role: Optional[str] = None
+    profile_picture_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -145,3 +146,33 @@ class CoverLetterResponse(BaseModel):
     cover_letter: str
     job_title: str
     company: str
+
+
+# --- Notification Schemas ---
+
+class NotificationPreferenceUpdate(BaseModel):
+    in_app_enabled: Optional[bool] = None
+    email_enabled: Optional[bool] = None
+
+
+class NotificationPreference(BaseModel):
+    id: int
+    student_id: int
+    in_app_enabled: bool
+    email_enabled: bool
+
+    class Config:
+        from_attributes = True
+
+
+class Notification(BaseModel):
+    id: int
+    student_id: int
+    internship_id: Optional[int] = None
+    title: str
+    message: Optional[str] = None
+    is_read: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

@@ -46,6 +46,7 @@ const Onboarding: React.FC = () => {
   const [_resumeFile, setResumeFile] = useState<File | null>(null);
   const [extractedSkills, setExtractedSkills] = useState<string[]>([]);
   const [inferredSkills, setInferredSkills] = useState<string[]>([]);
+  const [resumeRawText, setResumeRawText] = useState<string>('');
   const [parseError, setParseError] = useState<string | null>(null);
 
   const PARSE_STEPS = [
@@ -148,6 +149,7 @@ const Onboarding: React.FC = () => {
       
       const skills = response.data.extracted_skills || [];
       setExtractedSkills(skills);
+      setResumeRawText(response.data.raw_text || '');
     } catch (error) {
       console.error("Resume parsing failed:", error);
       setParseError("Could not parse resume. You can still continue, but we won't be able to auto-fill your skills.");
@@ -160,7 +162,8 @@ const Onboarding: React.FC = () => {
   const handleEnrich = async () => {
     setIsLoading(true);
     try {
-      await apiClient.put('/users/me', formData);
+      // Include resume_text so cover letter generation has full context
+      await apiClient.put('/users/me', { ...formData, resume_text: resumeRawText || null });
       if (extractedSkills.length > 0) {
         const skillsPayload = extractedSkills.map(skill => ({ name: skill }));
         await apiClient.post('/users/me/skills/', skillsPayload);

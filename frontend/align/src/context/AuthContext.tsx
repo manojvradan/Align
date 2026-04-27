@@ -27,6 +27,7 @@ interface User {
   major?: string;
   graduation_year?: number;
   preferred_job_role?: string;
+  profile_picture_url?: string;
 }
 
 interface AuthContextType {

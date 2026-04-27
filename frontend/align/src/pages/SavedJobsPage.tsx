@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import JobCard from '../components/JobCard';
 import apiClient from '../api/axiosConfig';
 import { useAuth } from '../context/AuthContext';
+import { getCached, isFresh, setCached, TTL } from '../api/cache';
+
+const SAVED_KEY = '/users/me/saved-jobs';
 import { FiBookmark } from 'react-icons/fi';
 import Icon from '../components/Icon';
 
@@ -17,16 +20,18 @@ interface Job {
 
 const SavedJobsPage: React.FC = () => {
     const { user } = useAuth();
-    const [jobs, setJobs] = useState<Job[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [jobs, setJobs] = useState<Job[]>(() => getCached<Job[]>(SAVED_KEY) ?? []);
+    const [isLoading, setIsLoading] = useState(() => getCached(SAVED_KEY) === null);
 
     // Fetch Saved Jobs
     useEffect(() => {
         const fetchSavedJobs = async () => {
             if (!user?.id) return;
+            if (isFresh(SAVED_KEY, TTL.MEDIUM)) { setIsLoading(false); return; }
+            if (getCached(SAVED_KEY) === null) setIsLoading(true);
             try {
-                // Use the new endpoint we just created
-                const response = await apiClient.get('/users/me/saved-jobs');
+                const response = await apiClient.get(SAVED_KEY);
+                setCached(SAVED_KEY, response.data);
                 setJobs(response.data);
             } catch (error) {
                 console.error("Error fetching saved jobs:", error);
@@ -39,11 +44,16 @@ const SavedJobsPage: React.FC = () => {
 
     const handleUnsave = async (jobId: number) => {
         // Optimistic UI Removal
-        setJobs(prev => prev.filter(j => j.id !== jobId));
+        const updated = jobs.filter(j => j.id !== jobId);
+        setJobs(updated);
+        setCached(SAVED_KEY, updated);
         try {
             await apiClient.post(`/users/me/saved-jobs/${jobId}`);
         } catch (error) {
             console.error("Failed to unsave", error);
+            // Revert
+            setJobs(jobs);
+            setCached(SAVED_KEY, jobs);
         }
     };
 

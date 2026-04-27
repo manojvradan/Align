@@ -2,6 +2,7 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.pool import NullPool
 from dotenv import load_dotenv
 
 # This line loads the .env file for local development outside of Docker
@@ -29,7 +30,19 @@ SQLALCHEMY_DATABASE_URL = (
 connect_args = {}
 if DB_HOST != "localhost" and DB_HOST != "127.0.0.1":
     connect_args["sslmode"] = "require"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args)
+    # Fail fast (10s) instead of waiting for the OS TCP timeout (~60s)
+    # when pgbouncer drops an idle SSL connection.
+    connect_args["connect_timeout"] = 10
+
+# Use NullPool with Supabase pgbouncer in transaction mode (port 6543).
+# pgbouncer manages its own server-side pool; SQLAlchemy should not hold
+# persistent client connections, as pgbouncer will close idle ones and
+# cause "SSL connection has been closed unexpectedly" errors.
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args=connect_args,
+    poolclass=NullPool,
+)
 
 # --- 4. Create a SessionLocal class ---
 # Each instance of SessionLocal will be a database session.

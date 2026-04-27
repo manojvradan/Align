@@ -12,14 +12,14 @@ import numpy as np
 # ---------------------------------------------------------------------------
 DOMAIN_CLUSTERS: dict[str, set[str]] = {
     "tech": {
-        "software", "developer", "engineer", "programmer", "frontend",
+        "software", "developer", "programmer", "frontend",
         "backend", "fullstack", "full-stack", "web", "react", "javascript",
         "typescript", "python", "java", "node", "devops", "cloud",
         "cybersecurity", "security", "machine learning", "ai",
         "artificial intelligence", "ml", "data", "ux", "ui", "product",
         "mobile", "ios", "android", "game", "it", "information technology",
         "computer", "coding", "tech", "digital", "database", "infrastructure",
-        "network", "systems", "sre", "qa", "science",
+        "network", "systems", "sre", "qa",
     },
     "pharmacy": {
         "pharmacy", "pharmacist", "pharmaceutical", "dispensary",
@@ -44,7 +44,8 @@ DOMAIN_CLUSTERS: dict[str, set[str]] = {
     },
     "engineering": {
         "mechanical", "civil", "electrical", "chemical", "structural",
-        "aerospace", "automotive", "manufacturing",
+        "aerospace", "automotive", "manufacturing", "geotechnical",
+        "environmental engineering", "process engineering",
     },
 }
 
@@ -157,6 +158,73 @@ class TFIDFRecommender:
                 matched.add(domain)
         return matched
 
+    def _generate_match_reason(
+            self, student: models.Student, internship: models.Internship
+            ) -> str:
+        """
+        Produces a human-readable explanation for why this internship was
+        recommended to this student.
+        """
+        reasons: list[str] = []
+        intern_text = (
+            (internship.title or '') + ' ' + (internship.description or '')
+        ).lower()
+
+        # 1. Role / title alignment
+        if student.preferred_job_role:
+            role_words = student.preferred_job_role.lower().split()
+            expanded: set[str] = set(role_words)
+            for word in role_words:
+                expanded.update(ROLE_SYNONYMS.get(word, []))
+            if any(kw in intern_text for kw in expanded):
+                reasons.append(
+                    f"Aligns with your preferred role \"{student.preferred_job_role}\""
+                )
+
+        # 2. Matching skills
+        matching_skills = [
+            s.name for s in student.skills if s.name.lower() in intern_text
+        ]
+        if matching_skills:
+            reasons.append(
+                f"Your skills match: {', '.join(matching_skills[:5])}"
+            )
+
+        # 3. Keywords that fired
+        keywords_raw = getattr(student, "search_keywords", None)
+        if keywords_raw:
+            # keywords may be comma-separated or space-separated
+            kws = [k.strip() for k in keywords_raw.replace(',', ' ').split() if k.strip()]
+            matching_kws = [kw for kw in kws if kw.lower() in intern_text]
+            # Deduplicate and limit
+            seen: set[str] = set()
+            unique_kws: list[str] = []
+            for kw in matching_kws:
+                if kw.lower() not in seen:
+                    seen.add(kw.lower())
+                    unique_kws.append(kw)
+            if unique_kws:
+                reasons.append(f"Keyword match: {', '.join(unique_kws[:4])}")
+
+        # 4. Projects that reference the same technologies
+        matching_projects: list[str] = []
+        for project in student.projects:
+            tech = (project.technologies_used or '').lower()
+            title = (project.title or '').lower()
+            if tech and any(t.strip() in intern_text for t in tech.split(',')):
+                matching_projects.append(project.title)
+            elif title and title in intern_text:
+                matching_projects.append(project.title)
+        if matching_projects:
+            reasons.append(
+                f"Related to your project(s): {', '.join(matching_projects[:2])}"
+            )
+
+        if not reasons:
+            reasons.append("Matches your overall profile")
+
+        return " · ".join(reasons)
+
     def fit(self, internships: list[models.Internship]):
         """
         Fits the TF-IDF vectorizer on the entire corpus of internships.
@@ -175,7 +243,7 @@ class TFIDFRecommender:
     def recommend(
             self, student: models.Student,
             top_n: int = 10
-            ) -> list[models.Internship]:
+            ) -> list[tuple[models.Internship, str]]:
         """
         Recommends the top N internships for a given student.
         """
@@ -247,7 +315,10 @@ class TFIDFRecommender:
             reverse=True
             )
 
-        # 8. Return the actual internship objects
-        recommended_internships = [self.internships[i] for i in top_indices]
-        print("Recommended Internships IDs:", [i.id for i in recommended_internships])
+        # 8. Return internship objects paired with their match reasons
+        recommended_internships = [
+            (self.internships[i], self._generate_match_reason(student, self.internships[i]))
+            for i in top_indices
+        ]
+        print("Recommended Internships IDs:", [t[0].id for t in recommended_internships])
         return recommended_internships

@@ -22,7 +22,13 @@ class Internship(BaseModel):
         from_attributes = True
 
 
+class RecommendedInternship(Internship):
+    """An internship returned as a recommendation, with a match reason."""
+    match_reason: Optional[str] = None
+
+
 # This is the main response model for your endpoint.
 # It ensures the final JSON will look like: {"recommendations": [...]}
 class RecommendationResponse(BaseModel):
-    recommendations: List[Internship]
+    recommendations: List[RecommendedInternship]
+    computing: bool = False

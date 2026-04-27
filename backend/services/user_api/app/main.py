@@ -1,14 +1,17 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from shared.core.database import engine, get_db
 from shared.core import models
-from . import crud, schemas, security, llm_service
+from . import crud, schemas, security, llm_service, email_service
 from typing import List
 from jose import JWTError
 from dotenv import load_dotenv
+from datetime import datetime, timedelta, timezone
 import os
+import base64
+import requests as http_requests
 
 # Now you can import from the shared directory
 load_dotenv()
@@ -155,6 +158,34 @@ def update_current_user_profile(
         )
 
 
+@app.post("/users/me/profile-picture", response_model=schemas.Student)
+async def upload_profile_picture(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token),
+):
+    """Upload a profile picture. Stored as a base64 data URI."""
+    ALLOWED_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only JPEG, PNG, GIF, or WebP images are allowed.",
+        )
+    content = await file.read()
+    MAX_SIZE = 5 * 1024 * 1024  # 5 MB
+    if len(content) > MAX_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File size must not exceed 5 MB.",
+        )
+    b64 = base64.b64encode(content).decode("utf-8")
+    data_uri = f"data:{file.content_type};base64,{b64}"
+    current_user.profile_picture_url = data_uri
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
 @app.post("/users/me/skills/", response_model=schemas.Student)
 def add_skill_for_current_user(
     skills: List[schemas.SkillCreate],
@@ -298,6 +329,39 @@ def enrich_current_user_profile(
     return updated_student
 
 
+@app.get("/users/me/skills/for-role")
+def get_skills_for_role(
+    role: str,
+    current_user: models.Student = Depends(get_current_student_from_token),
+):
+    """
+    Uses Gemini with Google Search Grounding to return the current market
+    skills required for the given role. Results are cached for 24 hours.
+
+    Query param:
+        role (str): e.g. "Frontend Engineer Intern"
+
+    Returns:
+        {
+            "skills": ["Python", "SQL", ...],
+            "source": "Google Search (grounded by Gemini 1.5 Flash)",
+            "grounding_urls": [{"title": "...", "url": "..."}, ...]
+        }
+    """
+    if not role or not role.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Query parameter 'role' is required.",
+        )
+    result = llm_service.get_skills_for_role(role.strip())
+    if not result["skills"]:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Could not fetch skills. Ensure GEMINI_API_KEY is set.",
+        )
+    return result
+
+
 @app.get("/users/me/saved-jobs/ids", response_model=List[int])
 def get_my_saved_job_ids(
     db: Session = Depends(get_db),
@@ -402,3 +466,170 @@ def generate_cover_letter_for_job(
         job_title=internship.title,
         company=internship.company or ""
     )
+
+
+# --------------------------------------------------------------------------
+# -------------------- Notification Endpoints (Protected) ------------------
+# --------------------------------------------------------------------------
+
+@app.get("/users/me/notification-preferences",
+         response_model=schemas.NotificationPreference)
+def get_notification_preferences(
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """Return the notification preferences for the current user."""
+    return crud.get_or_create_notification_preference(db, current_user.id)
+
+
+@app.put("/users/me/notification-preferences",
+         response_model=schemas.NotificationPreference)
+def update_notification_preferences(
+    prefs: schemas.NotificationPreferenceUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """Enable or disable in-app / email notifications."""
+    return crud.update_notification_preference(db, current_user.id, prefs)
+
+
+@app.get("/users/me/notifications",
+         response_model=List[schemas.Notification])
+def get_my_notifications(
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """Return all notifications for the current user (newest first)."""
+    return crud.get_notifications(db, current_user.id)
+
+
+@app.get("/users/me/notifications/unread-count", response_model=int)
+def get_unread_notification_count(
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """Return the count of unread notifications."""
+    return crud.get_unread_notification_count(db, current_user.id)
+
+
+@app.post("/users/me/notifications/{notification_id}/read")
+def mark_notification_as_read(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """Mark a single notification as read."""
+    notif = crud.mark_notification_read(db, notification_id, current_user.id)
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return {"status": "read"}
+
+
+@app.post("/users/me/notifications/read-all")
+def mark_all_notifications_read(
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """Mark every notification for the current user as read."""
+    crud.mark_all_notifications_read(db, current_user.id)
+    return {"status": "all_read"}
+
+
+@app.delete("/users/me/notifications/{notification_id}",
+            status_code=status.HTTP_204_NO_CONTENT)
+def delete_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """Delete a single notification."""
+    notif = crud.delete_notification(db, notification_id, current_user.id)
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+
+@app.post("/users/me/notifications/check",
+          response_model=List[schemas.Notification])
+def check_for_new_job_notifications(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: models.Student = Depends(get_current_student_from_token)
+):
+    """
+    Queries the recommendation service for top matches, then creates
+    in-app notifications (and optionally sends an email) for any
+    newly posted jobs (last 14 days) not previously notified about.
+    """
+    pref = crud.get_or_create_notification_preference(db, current_user.id)
+    if not pref.in_app_enabled:
+        return []
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+    rec_url = os.getenv("RECOMMENDATION_SERVICE_URL", "http://localhost:8002")
+
+    new_notifications = []
+    new_job_infos: list[dict] = []  # collected for the email
+
+    try:
+        response = http_requests.get(
+            f"{rec_url}/recommendations/{current_user.id}",
+            timeout=10
+        )
+        if response.status_code != 200:
+            return []
+
+        data = response.json()
+        for item in data.get("recommendations", [])[:10]:
+            internship_id = item.get("id")
+            if not internship_id:
+                continue
+
+            # Only consider recently posted internships
+            created_str = item.get("created_at", "")
+            try:
+                created_at = datetime.fromisoformat(
+                    created_str.replace("Z", "+00:00")
+                )
+                if created_at < cutoff:
+                    continue
+            except Exception:
+                pass  # if parsing fails, include the job anyway
+
+            # Skip if already notified
+            if crud.notification_exists_for_internship(
+                    db, current_user.id, internship_id):
+                continue
+
+            company = item.get("company") or "Unknown Company"
+            location = item.get("location") or ""
+            title = item.get("title", "New Internship")
+
+            notif = crud.create_notification(
+                db,
+                student_id=current_user.id,
+                title=f"{title}",
+                message=f"{company} \u2022 {location}",
+                internship_id=internship_id,
+            )
+            new_notifications.append(notif)
+            new_job_infos.append({
+                "title": title,
+                "company": company,
+                "location": location,
+                "url": item.get("url", ""),
+            })
+
+    except Exception as exc:
+        print(f"[notifications/check] Error querying recommendation service: {exc}")
+        return []
+
+    # Fire email in the background if enabled and there are new matches
+    if pref.email_enabled and new_job_infos:
+        background_tasks.add_task(
+            email_service.send_job_notification_email,
+            current_user.email,
+            (current_user.full_name or "Student").split()[0],
+            new_job_infos,
+        )
+
+    return new_notifications

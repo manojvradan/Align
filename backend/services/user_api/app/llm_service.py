@@ -1,10 +1,125 @@
 import json
+import re
+import time
 import openai
 import os
 from typing import List, Dict, Any
 
 # It's best practice to load the API key from environment variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# ---------------------------------------------------------------------------
+# Gemini – role skills with Google Search grounding
+# ---------------------------------------------------------------------------
+# Simple in-process cache so we don't hit the API on every page load.
+_skills_cache: Dict[str, Dict] = {}
+_skills_cache_ts: Dict[str, float] = {}
+_CACHE_TTL = 86_400  # 24 hours
+
+
+def get_skills_for_role(role: str) -> Dict[str, Any]:
+    """
+    Uses Gemini (gemini-1.5-flash) with Google Search Grounding to return
+    the current market skills required for the given job role.
+
+    Returns:
+        {
+            "skills": ["Python", "SQL", ...],
+            "source": "Google Search (grounded by Gemini 1.5 Flash)",
+            "grounding_urls": [{"title": "...", "url": "..."}, ...]
+        }
+    On any failure returns an empty result so the frontend falls back to the
+    static skill map.
+    """
+    empty = {"skills": [], "source": "", "grounding_urls": []}
+
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("WARNING: GEMINI_API_KEY not set – skill grounding disabled.")
+        return empty
+
+    role_key = role.lower().strip()
+
+    # Return cached result if still fresh
+    if role_key in _skills_cache:
+        age = time.time() - _skills_cache_ts.get(role_key, 0)
+        if age < _CACHE_TTL:
+            print(f"[Gemini] Returning cached skills for '{role}'")
+            return _skills_cache[role_key]
+
+    try:
+        import google.generativeai as genai
+
+        genai.configure(api_key=api_key)
+
+        # Build the model with Google Search Retrieval grounding enabled
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            tools=[{"google_search_retrieval": {}}],
+        )
+
+        prompt = (
+            f'You are an expert technical recruiter. '
+            f'Using current job market data from the web, list the 12-15 most '
+            f'important skills (technical tools, frameworks, certifications, '
+            f'and methodologies) that appear in real job postings for the role: '
+            f'"{role}". '
+            f'Respond ONLY with a JSON object in this exact format, no other text:\n'
+            f'{{"skills": ["skill1", "skill2", "skill3"]}}'
+        )
+
+        response = model.generate_content(prompt)
+
+        # --- Parse skills from response text ---
+        raw = response.text.strip()
+        # Strip markdown fences if present
+        raw = re.sub(r"^```[a-z]*\n?", "", raw, flags=re.IGNORECASE)
+        raw = re.sub(r"\n?```$", "", raw)
+        # Remove inline citation markers like [1], [2] etc.
+        raw = re.sub(r"\[\d+\]", "", raw)
+
+        # Try to extract the JSON object
+        json_match = re.search(r'\{.*"skills"\s*:\s*\[.*?\]\s*\}', raw, re.DOTALL)
+        if json_match:
+            data = json.loads(json_match.group())
+        else:
+            data = json.loads(raw)
+
+        skills: List[str] = data.get("skills", [])
+        if not isinstance(skills, list):
+            skills = []
+
+        # --- Extract grounding source URLs ---
+        grounding_urls: List[Dict[str, str]] = []
+        try:
+            candidate = response.candidates[0]
+            metadata = candidate.grounding_metadata
+            if metadata and metadata.grounding_chunks:
+                for chunk in metadata.grounding_chunks[:6]:
+                    if hasattr(chunk, "web") and chunk.web:
+                        grounding_urls.append({
+                            "title": chunk.web.title or chunk.web.uri,
+                            "url": chunk.web.uri,
+                        })
+        except Exception as meta_err:
+            print(f"[Gemini] Could not extract grounding metadata: {meta_err}")
+
+        result = {
+            "skills": skills,
+            "source": "Google Search (grounded by Gemini 1.5 Flash)",
+            "grounding_urls": grounding_urls,
+        }
+
+        # Store in cache
+        _skills_cache[role_key] = result
+        _skills_cache_ts[role_key] = time.time()
+        print(f"[Gemini] Fetched {len(skills)} skills for '{role}' "
+              f"with {len(grounding_urls)} grounding sources.")
+        return result
+
+    except Exception as e:
+        print(f"[Gemini] Error fetching skills for role '{role}': {e}")
+        return empty
 
 
 def generate_profile_enrichment(
@@ -152,11 +267,11 @@ def generate_cover_letter(
 
     skill_str = ", ".join(skills) if skills else "Not specified"
 
-    # Truncate resume text to avoid hitting token limits (~3000 chars ≈ 750 tokens)
+    # Truncate resume text to avoid hitting token limits (~6000 chars ≈ 1500 tokens)
     resume_section = ""
     if resume_text:
-        truncated = resume_text[:3000]
-        resume_section = f"\n    - Full Resume:\n{truncated}"
+        truncated = resume_text[:6000]
+        resume_section = f"\n\n**Full Resume Text (use this as the source of truth):**\n{truncated}"
 
     prompt = f"""
     You are an expert career advisor writing a professional cover letter
@@ -172,24 +287,29 @@ def generate_cover_letter(
     - Company: {company}
     - Description: {job_description or "Not available"}
 
-    **Instructions:**
+    **Strict Instructions:**
     1. Write a concise, professional cover letter (3-4 paragraphs).
-    2. Highlight how the applicant's skills and background align with the role.
-    3. Draw on specific experiences and projects from the resume where relevant.
-    4. Keep the tone enthusiastic but professional.
-    5. Do NOT fabricate experience the student doesn't have.
-    6. Use a standard cover letter format with greeting and sign-off.
-    7. Address it to "Hiring Manager" if no specific name is given.
+    2. ONLY reference experiences, projects, skills, and achievements that are explicitly present in the resume text above. Quote or paraphrase directly from the resume — do not invent anything.
+    3. If the resume text is empty or a section is missing, acknowledge the student's studies and skills without fabricating work history.
+    4. DO NOT fabricate any job titles, company names, projects, certifications, or experiences the student has not listed.
+    5. Match the role requirements from the job description to actual resume content — if a requirement isn't met, do not claim it is.
+    6. Use a standard cover letter format: greeting, 3 body paragraphs, sign-off.
+    7. Address it to "Hiring Manager" unless the job description specifies a name.
+    8. Keep the tone enthusiastic but honest and professional.
 
-    Output ONLY the cover letter text, no extra commentary.
+    Output ONLY the cover letter text, no extra commentary or explanation.
     """
 
     try:
         response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",  # Better quality than gpt-3.5-turbo at similar cost
             messages=[
                 {"role": "system",
-                 "content": "You are a professional cover letter writer."},
+                 "content": (
+                     "You are a professional cover letter writer. "
+                     "You only write about experiences and skills that are explicitly "
+                     "stated in the resume provided. You never fabricate or embellish."
+                 )},
                 {"role": "user", "content": prompt}
             ],
         )

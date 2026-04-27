@@ -2,11 +2,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import JobCard from '../components/JobCard'; // Adjust path if needed
 import axios from 'axios';
 import apiClient from '../api/axiosConfig';
+import { getCached, isFresh, setCached, invalidate, TTL } from '../api/cache';
+
+const JOBS_KEY = '/jobs/';
+const SAVED_IDS_KEY = '/users/me/saved-jobs/ids';
+const APPLIED_IDS_KEY = '/users/me/applied-jobs/ids';
 import { useAuth } from '../context/AuthContext';
+import { useLocation } from 'react-router-dom';
 import JobOverlay from '../components/JobOverlay';
 import { AnimatePresence } from 'framer-motion'; 
 import ApplicationCheckModal from '../components/ApplicationCheckModal';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 // Define the Job type again for this component
 interface Job {
   id: number;
@@ -16,15 +22,19 @@ interface Job {
   url:string;
   source: string;
   isRecommended?: boolean;
+  matchReason?: string;
 }
 
 const JobsPage: React.FC = () => {
     const { user } = useAuth();
-    const [jobs, setJobs] = useState<Job[]>([]);
+    const location = useLocation();
+    const [jobs, setJobs] = useState<Job[]>(() => getCached<Job[]>(JOBS_KEY) ?? []);
 
-    const [savedJobIds, setSavedJobIds] = useState<Set<number>>(new Set());
+    const [savedJobIds, setSavedJobIds] = useState<Set<number>>(
+        () => new Set(getCached<number[]>(SAVED_IDS_KEY) ?? [])
+    );
 
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(() => getCached(JOBS_KEY) === null);
     const [isRefetching, setIsRefetching] = useState(false);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [error, _setError] = useState<string | null>(null);
@@ -34,7 +44,9 @@ const JobsPage: React.FC = () => {
     const [selectedJob, setSelectedJob] = useState<Job | null>(null);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [_isOverlayOpen, setIsOverlayOpen] = useState(false);
-    const [appliedJobIds, setAppliedJobIds] = useState<Set<number>>(new Set());
+    const [appliedJobIds, setAppliedJobIds] = useState<Set<number>>(
+        () => new Set(getCached<number[]>(APPLIED_IDS_KEY) ?? [])
+    );
     const [verifyingJob, setVerifyingJob] = useState<Job | null>(null);
     const [coverLetterText, setCoverLetterText] = useState<string>('');
     const [coverLetterJob, setCoverLetterJob] = useState<Job | null>(null);
@@ -42,6 +54,9 @@ const JobsPage: React.FC = () => {
 
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+    const [recsComputing, setRecsComputing] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const JOBS_PER_PAGE = 12;
 
     const RECOMMENDATION_SERVICE_URL = import.meta.env.VITE_RECOMMENDATION_URL || 'http://localhost:8002';
 
@@ -114,8 +129,9 @@ const JobsPage: React.FC = () => {
     };
 
     const handleManualRefresh = () => {
+        // Bust the cache so the effect re-fetches fresh data
+        invalidate(JOBS_KEY, SAVED_IDS_KEY, APPLIED_IDS_KEY);
         setIsRefetching(true);
-        // Incrementing this number triggers the useEffect below
         setRefreshTrigger(prev => prev + 1);
     };
 
@@ -147,17 +163,30 @@ const JobsPage: React.FC = () => {
     };
 
     useEffect(() => {
-    const fetchAndMergeJobs = async () => {
+        let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+        const fetchAndMergeJobs = async () => {
             if (!user?.id) return;
-            setIsLoading(true);
+
+            // All caches fresh — nothing to fetch
+            if (
+                isFresh(JOBS_KEY, TTL.LONG) &&
+                isFresh(SAVED_IDS_KEY, TTL.MEDIUM) &&
+                isFresh(APPLIED_IDS_KEY, TTL.MEDIUM)
+            ) {
+                setIsLoading(false);
+                setIsRefetching(false);
+                return;
+            }
+
+            // Only show the full skeleton when there is no cached data
+            if (getCached(JOBS_KEY) === null) setIsLoading(true);
             setIsLoadingRecommendations(true);
+            setRecsComputing(false);
 
             try {
-                const timeoutMs = 8000;
-
-                // Start all fetches simultaneously
-                const generalPromise = apiClient.get('/jobs/', { timeout: timeoutMs });
-                const recPromise = axios.get(`${RECOMMENDATION_SERVICE_URL}/recommendations/${user.id}`, { timeout: timeoutMs });
+                const generalPromise = apiClient.get('/jobs/', { timeout: 20000 });
+                const recPromise = axios.get(`${RECOMMENDATION_SERVICE_URL}/recommendations/${user.id}`, { timeout: 10000 });
                 const savedPromise = apiClient.get('/users/me/saved-jobs/ids');
                 const appliedPromise = apiClient.get('/users/me/applied-jobs/ids');
 
@@ -170,44 +199,98 @@ const JobsPage: React.FC = () => {
 
                 let generalJobs: Job[] = [];
 
-                if (appliedResponse.status === 'fulfilled') setAppliedJobIds(new Set(appliedResponse.value.data));
-                if (savedResponse.status === 'fulfilled') setSavedJobIds(new Set(savedResponse.value.data));
+                if (appliedResponse.status === 'fulfilled') {
+                    setAppliedJobIds(new Set(appliedResponse.value.data));
+                    setCached(APPLIED_IDS_KEY, appliedResponse.value.data);
+                }
+                if (savedResponse.status === 'fulfilled') {
+                    setSavedJobIds(new Set(savedResponse.value.data));
+                    setCached(SAVED_IDS_KEY, savedResponse.value.data);
+                }
 
                 if (generalResponse.status === 'fulfilled') {
                     generalJobs = generalResponse.value.data;
+                    setCached(JOBS_KEY, generalJobs);
                 } else {
                     console.error('Failed to load general jobs');
                 }
 
-                // Show general jobs immediately
+                // Show general jobs immediately while we wait for recs
                 setJobs(generalJobs);
                 setIsLoading(false);
+                setIsRefetching(false);
 
-                // Now wait for recommendations and merge them in
-                try {
-                    const recResponse = await recPromise;
-                    const recommendedJobs: Job[] = recResponse.data.recommendations.map((job: Job) => ({
+                const mergeRecs = (recData: { recommendations: (Job & { match_reason?: string })[] }) => {
+                    const recommendedJobs: Job[] = (recData.recommendations || []).map((job) => ({
                         ...job,
                         isRecommended: true,
+                        matchReason: job.match_reason,
                     }));
                     const recommendedIds = new Set(recommendedJobs.map(j => j.id));
-                    const remainingGeneralJobs = generalJobs.filter(job => !recommendedIds.has(job.id));
-                    setJobs([...recommendedJobs, ...remainingGeneralJobs]);
+                    setJobs([...recommendedJobs, ...generalJobs.filter(job => !recommendedIds.has(job.id))]);
+                    setIsLoadingRecommendations(false);
+                    setRecsComputing(false);
+                };
+
+                const startPolling = () => {
+                    if (pollInterval) clearInterval(pollInterval);
+                    pollInterval = setInterval(async () => {
+                        try {
+                            const res = await axios.get(
+                                `${RECOMMENDATION_SERVICE_URL}/recommendations/${user.id}`,
+                                { timeout: 10000 }
+                            );
+                            if (!res.data.computing) {
+                                clearInterval(pollInterval!);
+                                pollInterval = null;
+                                mergeRecs(res.data);
+                            }
+                            // else: still computing — keep polling
+                        } catch { /* transient error — keep polling */ }
+                    }, 3000);
+                };
+
+                try {
+                    const recResponse = await recPromise;
+                    if (recResponse.data.computing) {
+                        // Backend is computing in background — show banner and poll
+                        setRecsComputing(true);
+                        startPolling();
+                    } else {
+                        mergeRecs(recResponse.data);
+                    }
                 } catch {
                     console.warn('Recommendation service unavailable');
-                } finally {
                     setIsLoadingRecommendations(false);
+                    setRecsComputing(false);
                 }
 
             } catch (error) {
                 console.error('Critical error fetching jobs', error);
                 setIsLoading(false);
                 setIsLoadingRecommendations(false);
+                setRecsComputing(false);
             }
         };
 
         fetchAndMergeJobs();
+        return () => { if (pollInterval) clearInterval(pollInterval); };
     }, [user?.id, refreshTrigger]);
+
+    // Open overlay when navigated from Dashboard with a specific job ID
+    useEffect(() => {
+        const openJobId = (location.state as { openJobId?: number } | null)?.openJobId;
+        if (!openJobId || jobs.length === 0) return;
+        const job = jobs.find((j) => j.id === openJobId);
+        if (job) {
+            setSelectedJob(job);
+            // Clear the state so navigating back and forward doesn't re-open it
+            window.history.replaceState({}, '');
+        }
+    }, [jobs, location.state]);
+
+    // Reset to page 1 whenever filters/sort change
+    useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedLocation, sortOrder]);
 
     const filteredAndSortedJobs = useMemo(() => {
         // 1. Filter
@@ -242,6 +325,12 @@ const JobsPage: React.FC = () => {
         return filtered;
     }, [jobs, searchTerm, sortOrder, selectedLocation]);
 
+    const totalPages = Math.max(1, Math.ceil(filteredAndSortedJobs.length / JOBS_PER_PAGE));
+    const pagedJobs = filteredAndSortedJobs.slice(
+        (currentPage - 1) * JOBS_PER_PAGE,
+        currentPage * JOBS_PER_PAGE
+    );
+
     if (isLoading) {
         return (
             <div>
@@ -268,7 +357,7 @@ const JobsPage: React.FC = () => {
     }
 
     return (
-        <div>
+        <div className="pb-20">
             <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Internships & Opportunities</h1>
@@ -324,14 +413,16 @@ const JobsPage: React.FC = () => {
                 <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-xl">
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent shrink-0" />
                     <p className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">
-                        Finding your AI-matched internships…
+                        {recsComputing
+                            ? 'AI is personalizing your recommendations — this takes a moment on first load…'
+                            : 'Loading your matched internships…'}
                     </p>
                 </div>
             )}
 
             {/* Job Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {filteredAndSortedJobs.map(job => (
+                {pagedJobs.map(job => (
                     <div key={job.id} onClick={() => handleJobClick(job)} className="cursor-pointer h-full">
                         <JobCard
                             job={job}
@@ -350,6 +441,55 @@ const JobsPage: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Pagination controls — fixed to bottom of viewport, right of sidebar */}
+            {totalPages > 1 && (
+                <div className="fixed bottom-0 left-0 lg:left-64 right-0 z-30 bg-white/80 dark:bg-[#080810]/80 backdrop-blur-md border-t border-slate-200 dark:border-white/10 flex items-center justify-center gap-3 py-3 px-6">
+                    <button
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="p-2 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-white/40 hover:text-indigo-500 dark:hover:text-indigo-400 hover:border-indigo-300 dark:hover:border-indigo-500/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Previous page"
+                    >
+                        <ChevronLeftIcon className="h-4 w-4" />
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                            const isActive = page === currentPage;
+                            const isNearActive = Math.abs(page - currentPage) <= 1 || page === 1 || page === totalPages;
+                            if (!isNearActive) {
+                                // Show ellipsis only at the boundaries
+                                if (page === 2 && currentPage > 3) return <span key={page} className="text-slate-400 dark:text-white/25 px-1 text-sm">…</span>;
+                                if (page === totalPages - 1 && currentPage < totalPages - 2) return <span key={page} className="text-slate-400 dark:text-white/25 px-1 text-sm">…</span>;
+                                return null;
+                            }
+                            return (
+                                <button
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`min-w-[2rem] h-8 rounded-lg text-sm font-medium transition-colors ${
+                                        isActive
+                                            ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25'
+                                            : 'text-slate-500 dark:text-white/40 hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-white/5'
+                                    }`}
+                                >
+                                    {page}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <button
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="p-2 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-white/40 hover:text-indigo-500 dark:hover:text-indigo-400 hover:border-indigo-300 dark:hover:border-indigo-500/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Next page"
+                    >
+                        <ChevronRightIcon className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
             <AnimatePresence>
                 {selectedJob && (
                     <JobOverlay 

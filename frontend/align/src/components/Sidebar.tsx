@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FiGrid, FiFileText, FiLogOut, FiUploadCloud, FiBriefcase } from 'react-icons/fi';
+import { FiGrid, FiFileText, FiLogOut, FiBriefcase, FiBell, FiZap } from 'react-icons/fi';
 import Icon from './Icon';
 import { useAuth } from '../context/AuthContext';
 
@@ -21,7 +21,8 @@ const Sidebar: React.FC = () => {
     { to: '/dashboard', icon: FiGrid, text: 'Overview' },
     { to: '/jobs', icon: FiBriefcase, text: 'Search Internships' },
     { to: '/applied', icon: FiFileText, text: 'Applied Internships' },
-    { to: '/resume-parser', icon: FiUploadCloud, text: 'Resume Parser' },
+    { to: '/skills', icon: FiZap, text: 'Skills' },
+    { to: '/notifications', icon: FiBell, text: 'Notifications' },
   ];
 
   return (

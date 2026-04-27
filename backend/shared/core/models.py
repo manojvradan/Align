@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table, Enum
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table, Enum, Boolean
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
@@ -69,6 +69,7 @@ class Student(Base):
     preferred_job_role = Column(String, nullable=True)
     search_keywords = Column(Text, nullable=True)
     resume_text = Column(Text, nullable=True)
+    profile_picture_url = Column(Text, nullable=True)
 
     skills = relationship(
         "Skill",
@@ -92,6 +93,18 @@ class Student(Base):
     projects = relationship("Project", back_populates="student", cascade="all, delete-orphan")
     courses = relationship("Course", back_populates="student", cascade="all, delete-orphan")
     applications = relationship("InternshipApplication", back_populates="student")
+    notification_preference = relationship(
+        "NotificationPreference",
+        back_populates="student",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+    notifications = relationship(
+        "Notification",
+        back_populates="student",
+        cascade="all, delete-orphan",
+        order_by="Notification.created_at.desc()"
+    )
 
 
 class Internship(Base):
@@ -157,4 +170,28 @@ class InternshipApplication(Base):
     applied_at = Column(DateTime(timezone=True), server_default=func.now())
 
     student = relationship("Student", back_populates="applications")
+    internship = relationship("Internship")
+
+
+class NotificationPreference(Base):
+    __tablename__ = "notification_preferences"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey('students.id'), unique=True, nullable=False)
+    in_app_enabled = Column(Boolean, default=True, nullable=False)
+    email_enabled = Column(Boolean, default=False, nullable=False)
+
+    student = relationship("Student", back_populates="notification_preference")
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey('students.id'), nullable=False)
+    internship_id = Column(Integer, ForeignKey('internships.id'), nullable=True)
+    title = Column(String, nullable=False)
+    message = Column(Text, nullable=True)
+    is_read = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    student = relationship("Student", back_populates="notifications")
     internship = relationship("Internship")
