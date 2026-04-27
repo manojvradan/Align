@@ -47,7 +47,7 @@ const JobOverlay: React.FC<JobOverlayProps> = ({
   const safeDescription = DOMPurify.sanitize(job.description || "No description available.");
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end items-start sm:items-stretch">
+    <div className="fixed inset-0 z-[200] flex justify-end items-start sm:items-stretch">
       
       {/* 1. The Backdrop */}
       <motion.div 
